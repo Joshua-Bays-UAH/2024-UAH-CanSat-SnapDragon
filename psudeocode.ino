@@ -1,9 +1,6 @@
 #include <SoftwareSerial.h>
 #include <string>
-
-#define TeamID "SNAP"
-
-#define BuzzerPin -1
+#define TeamID "SNAP" #define BuzzerPin -1
 #define LEDPin -1
 
 SoftwareSerial XBee(0, 1); // RX, TX
@@ -51,9 +48,9 @@ void setup(){
 void loop(){
 	programTime = millis();
 	
-	if(char == 'f'){
+	if(mode == 'f'){
 		
-	}else if(char 's'){
+	}else if(mode == 's'){
 		packet = "";
 		while(XBee.available()){ packet += (char)XBee.read(); }
 		// Parse packet
