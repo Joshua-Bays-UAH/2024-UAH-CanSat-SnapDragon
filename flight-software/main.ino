@@ -23,21 +23,12 @@ TODO
 
 #include <SoftwareSerial.h>
 #include <string>
-
-#define TeamID "SNAP"
-#define BuzzerPin -1 // UPDATE
-#define LEDPin -1 // UPDATE
+#include "defs.h"
 
 SoftwareSerial XBee(0, 1); // RX, TX
 SoftwareSerial SD(12, 11); // RX, TX
 
-#define ServoPin1 -1 // UPDATE
-#define ServoPin2 -1 // UPDATE
-#define ServoPin3 -1 // UPDATE
 Sensor sensor1, sensor2; // MAKE REAL
-
-#define ReleaseHeight 760
-#define ParaHeight 100
 
 unsigned long programTime;
 unsigned baseTime;
