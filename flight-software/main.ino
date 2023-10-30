@@ -23,7 +23,7 @@ TODO
 
 #include <SoftwareSerial.h>
 #include <string>
-#include "defs.h"
+#include "defs.hpp"
 
 SoftwareSerial XBee(0, 1); // RX, TX
 SoftwareSerial SD(12, 11); // RX, TX
