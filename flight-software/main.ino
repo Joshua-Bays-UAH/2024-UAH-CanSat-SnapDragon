@@ -5,7 +5,7 @@ Project: 2023 UAH CanSat Team Snapdragon
 
 /* 
 TODO
-	1. Create flight mode 
+	1. Create flight mode
 	2. Create simulation mode
 	3. Create way to transfer from flight to simulation
 	4. Create command inputs
@@ -15,20 +15,27 @@ TODO
 		4. SIMP
 		5. CAL
 		6. BCN
-	5. Create audio beacon
-	6. Copy this code and make sensor data real
-		1. Sensors
-		2. Pins
 */
 
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP3XX.h>
+#include <Adafruit_LSM6DSOX.h>
+#include <107-Arduino-Servo-RP2040.h>
 #include <SoftwareSerial.h>
+#include <SPI.h>
+#include <Wire.h>
 #include <string>
+#include <string.h>
+#include <time.h>
 #include "defs.hpp"
+
+Adafruit_LSM6DSOX sox;
+Adafruit_BMP3XX bmp;
 
 SoftwareSerial XBee(0, 1); // RX, TX
 SoftwareSerial SD(12, 11); // RX, TX
 
-Sensor sensor1, sensor2; // MAKE REAL
+static _107_::Servo servo_r, servo_p;
 
 unsigned long programTime;
 unsigned baseTime;
@@ -37,6 +44,8 @@ unsigned long packetct = 0; // how many packets have been sent
 char mode = 'f'; // flight mode | F: FLIGHT, S:SIMULATION
 char state = 'W'; // software state | W: LAUNCH_WAIT, A: ASCENT, R: ROCKET_SEPARATION, D: DESCENT, H: HS_RELEASE, L: LANDED
 float altitude; // current altitude
+float oldAlt; // previous altitude, will be used for velocity
+float velocity; //
 float airspeed; // current airspeed
 char hs = 'N'; // heat shield | P: DEPLOYED, N: NOT_DEPLOYED
 char pc = 'N'; // parachute | C: DEPLOYED, N: NOT_DEPLOYED
@@ -53,7 +62,10 @@ char cmdEcho; // last command received
 _Bool cx = 1; // flag to send telemetry or not
 _Bool bcn = 0; // flag to turn on and off the audio beacon
 
+_Bool bcnOn = 0;
+
 std::string packet;
+char packetBuff[128];
 
 void setup(){
 	baseTime = get_baseTime();
@@ -62,15 +74,80 @@ void setup(){
 	Serial.begin(9600); // Remove once finalized
 	XBee.begin(9600);
 	XBee.println("XBee connected");
+
+	// SD card
+	SD.begin(9600);
 	
-	connect_sensor(sensor1); // MAKE REAL
-	connect_sensor(sensor2); // MAKE REAL
+	while(!sox.begin_I2C()){ delay(10); XBee.println("LSM!"); }
+	XBee.println("LSM6DSOX connected");
 	
-	connect_sd(SD); // MAKE REAL
+	XBee.print("Accelerometer range set to: ");
+	switch(sox.getAccelRange()){
+		case LSM6DS_ACCEL_RANGE_2_G: XBee.println("+-2G"); break;
+		case LSM6DS_ACCEL_RANGE_4_G: XBee.println("+-4G"); break;
+		case LSM6DS_ACCEL_RANGE_8_G: XBee.println("+-8G"); break;
+		case LSM6DS_ACCEL_RANGE_16_G: XBee.println("+-16G"); break;
+	}
+
+	XBee.print("Gyro range set to: ");
+	switch(sox.getGyroRange()){
+		case LSM6DS_GYRO_RANGE_125_DPS: XBee.println("125 degrees/s"); break;
+		case LSM6DS_GYRO_RANGE_250_DPS: XBee.println("250 degrees/s"); break;
+		case LSM6DS_GYRO_RANGE_500_DPS: XBee.println("500 degrees/s"); break;
+		case LSM6DS_GYRO_RANGE_1000_DPS: XBee.println("1000 degrees/s"); break;
+		case LSM6DS_GYRO_RANGE_2000_DPS: XBee.println("2000 degrees/s"); break;
+		case ISM330DHCX_GYRO_RANGE_4000_DPS: break; //unsupported range for the DSOX
+	}
+
+	XBee.print("Accelerometer data rate set to: ");
+	switch(sox.getAccelDataRate()){
+		case LSM6DS_RATE_SHUTDOWN: XBee.println("0 Hz"); break;
+		case LSM6DS_RATE_12_5_HZ: XBee.println("12.5 Hz"); break;
+		case LSM6DS_RATE_26_HZ: XBee.println("26 Hz"); break;
+		case LSM6DS_RATE_52_HZ: XBee.println("52 Hz"); break;
+		case LSM6DS_RATE_104_HZ: XBee.println("104 Hz"); break;
+		case LSM6DS_RATE_208_HZ: XBee.println("208 Hz"); break;
+		case LSM6DS_RATE_416_HZ: XBee.println("416 Hz"); break;
+		case LSM6DS_RATE_833_HZ: XBee.println("833 Hz"); break;
+		case LSM6DS_RATE_1_66K_HZ: XBee.println("1.66 KHz"); break;
+		case LSM6DS_RATE_3_33K_HZ: XBee.println("3.33 KHz"); break;
+		case LSM6DS_RATE_6_66K_HZ: XBee.println("6.66 KHz"); break;
+	}
+
+	XBee.print("Gyro data rate set to: ");
+	switch(sox.getGyroDataRate()){
+		case LSM6DS_RATE_SHUTDOWN: XBee.println("0 Hz"); break;
+		case LSM6DS_RATE_12_5_HZ: XBee.println("12.5 Hz"); break;
+		case LSM6DS_RATE_26_HZ: XBee.println("26 Hz"); break;
+		case LSM6DS_RATE_52_HZ: XBee.println("52 Hz"); break;
+		case LSM6DS_RATE_104_HZ: XBee.println("104 Hz"); break;
+		case LSM6DS_RATE_208_HZ: XBee.println("208 Hz"); break;
+		case LSM6DS_RATE_416_HZ: XBee.println("416 Hz"); break;
+		case LSM6DS_RATE_833_HZ: XBee.println("833 Hz"); break;
+		case LSM6DS_RATE_1_66K_HZ: XBee.println("1.66 KHz"); break;
+		case LSM6DS_RATE_3_33K_HZ: XBee.println("3.33 KHz"); break;
+		case LSM6DS_RATE_6_66K_HZ: XBee.println("6.66 KHz"); break;
+	}
+
+	XBee.println("Adafruit BMP388 / BMP390 test");
+	if(!bmp.begin_I2C()){ XBee.println("Could not find a valid BMP3 sensor, check wiring!"); }
+
+	// Set up oversampling, filter initialization, and ground elevation
+	bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+	bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+	bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+	bmp.setOutputDataRate(BMP3_ODR_50_HZ);
+	while(!bmp.performReading()){ XBee.println("Failed to perform reading"); }
+	for(unsigned i = 0; i < 100; i++){ GroundElevation = bmp.readAltitude(SEALEVELPRESSURE_HPA); } XBee.println("Ground Elevation Set");
+
+	// Print out packet format
+	packet = "TEAM_ID,MISSION_TIME,PACKET_COUNT,SW_STATE, PL_STATE,ALTITUDE, TEMP, VOLTAGE, GPS_LATITUDE, GPS_LONGITUDE, GYRO_R,GYRO_P,GYRO_Y";
+	for(unsigned i = 0; i < packet.size(); i++){ XBee.print(packet[i]);} XBee.println();
+
+	pinMode(BuzzerPin, OUTPUT); pinMode(LEDPin, OUTPUT);
+	packetTimer = time(0);
 	
-	connect_servo(servo1); // MAKE REAL
-	connect_servo(servo2); // MAKE REAL
-	connect_servo(servo3); // MAKE REAL
+	oldAlt = 0; velocity = 0;
 }
 
 void loop(){
@@ -78,21 +155,50 @@ void loop(){
 	programTime = millis();
 	
 	if(mode == 'F'){
-		// Make decisions
-		if(altitude >= AscentHeight && state == 'W'){ // Check to move into ascent
-		AscentCmd:
-			state = 'A';
+		if(bcn){BcnCmd:
+			digitalWrite(BuzzerPin, bcnOn ? HIGH : LOW);
+			digitalWrite(LEDPin, bcnOn ? HIGH : LOW);
+			bcnOn = !bcnOn;
 		}
-		if(altitude >= ReleaseHeight && state == 'A'){ // Check to move into release (and release)
-		ReleaseCmd:
-			spin_servo(servo1);
-			state = 'R';
-		}
-	}else if(mode == 'S'){
+	}else if(mode == 'S'){ReadPacketCmd:
 		// Read packet
 		packet = "";
 		while(XBee.available()){ packet += (char)XBee.read(); }
 		// Parse packet
+	}
+	// Make decisions
+	if(altitude >= AscentHeight && state == 'W'){AscentCmd: // Check to move into ascent
+		state = 'A';
+	}
+	if(altitude >= ReleaseHeight && state == 'A'){ReleaseCmd: // Check to move into release (and release)
+		//spin_servo(servo1);
+		state = 'R';
+	}
+	if(state == 'R'){DescentCmd: // 
+		
+	}
+	if(state == 'D'){HSCmd:
+		
+	}
+	if(state == 'H'){LandCmd:
+		
+	}
+	
+	if(XBee.available){
+		XBee.readBytesUntil('\0', packetBuff, sizeof(packetBuff));
+		if(strncmp(packetBuff, "CMD,2079,", 9) == 0){
+			if(strncmp(packetBuff+9, "CX,", 3) == 0){
+				if(strncmp(packetBuff+12, "ON", 2) == 0){
+					cx = 1;
+				}else if(strncmp(packetBuff+12, "OFF", 3) == 0){
+					cx = 0;
+				}
+			}
+		}
+	}
+	
+	if(cx){SendPacketCmd:
+
 	}
 }
 
