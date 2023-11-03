@@ -6,15 +6,6 @@ Project: 2023 UAH CanSat Team Snapdragon
 /* 
 TODO
 	1. Create flight mode
-	2. Create simulation mode
-	3. Create way to transfer from flight to simulation
-	4. Create command inputs
-		1. CX
-		2. ST
-		3. SIM
-		4. SIMP
-		5. CAL
-		6. BCN
 */
 
 #include <Adafruit_Sensor.h>
@@ -29,9 +20,6 @@ TODO
 #include <time.h>
 #include "defs.hpp"
 
-#include "setup.ino"
-#include "loop.ino"
-
 Adafruit_LSM6DSOX sox;
 Adafruit_BMP3XX bmp;
 
@@ -44,7 +32,7 @@ unsigned long programTime;
 unsigned baseTime;
 
 unsigned long packetct = 0; // how many packets have been sent
-char mode = 'f'; // flight mode | F: FLIGHT, S:SIMULATION
+char mode = 'F'; // flight mode | F: FLIGHT, S:SIMULATION
 char state = 'W'; // software state | W: LAUNCH_WAIT, A: ASCENT, R: ROCKET_SEPARATION, D: DESCENT, H: HS_RELEASE, L: LANDED
 float altitude; // current altitude
 float oldAlt; // previous altitude, will be used for velocity
@@ -60,14 +48,19 @@ float gpsAltitude; // current GPS altitude
 float gpsCoords[2]; // current GPS latitude and longitude (in that order)
 unsigned gpsStats; // current count of GPS connections
 float gyro[3]; // current X and Y tilt, and Z rotation (in that order)
-char cmdEcho; // last command received
+char cmdEcho[128]; // last command received
 
 _Bool cx = 1; // flag to send telemetry or not
 _Bool bcn = 0; // flag to turn on and off the audio beacon
 
 _Bool bcnOn = 0;
+_Bool sEnable = 0;
 
 std::string packet;
 char packetBuff[128];
 
 unsigned releaseTimer;
+
+
+#include "setup.ino"
+#include "loop.ino"
