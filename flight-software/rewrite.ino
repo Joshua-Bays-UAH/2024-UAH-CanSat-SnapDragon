@@ -25,7 +25,7 @@
 #define ParaPin 13
 
 #define BHigh digitalWrite(BuzzerPin, HIGH)
-#define BLow digitalWrite(BuzzerPin, HIGH)
+#define BLow digitalWrite(BuzzerPin, LOW)
 
 #define AscentHeight 5
 #define ReleaseHeight 760
@@ -37,20 +37,32 @@
 #define BMP_CS 10
 #define SEALEVELPRESSURE_HPA (1013.25)
 
+
 Adafruit_BMP3XX ptSensor; // Adafruit BMP 388 pressure and temperature sensor
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
 
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
 
+SoftwareSerial XBee(XBeeRX, XBeeTX);
+SoftwareSerial SD(SDRX, SDTX);
+
+unsigned GroundElevation;
+double voltage;
+double gps_time;
+double temperature;
+double pressure;
+double altitude;
+double tilt_x;
+double tilt_y;
+//double rot_z;
+
 void setup(void){
-	baseTime = get_baseTime();
-	
 	Serial.begin(9600);
 	XBee.begin(9600); XBee.println("XBee connected");
 	SD.begin(9600);
 	
 	Serial.println("Orientation Sensor Test"); Serial.println("");
-	/* Initialise the sensor */
+	/* Initialize the sensor */
 	while(!bno.begin()){ Serial.println("BNO055 not found"); delay(100); }
 
 	XBee.println("Adafruit BMP388 / BMP390 test");
@@ -61,111 +73,22 @@ void setup(void){
 	ptSensor.setPressureOversampling(BMP3_OVERSAMPLING_4X);
 	ptSensor.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
 	ptSensor.setOutputDataRate(BMP3_ODR_50_HZ);
-	while(!ptSensor.performReading()){ XBee.println("Failed to perform reading"); }
-	for(unsigned i = 0; i < 100; i++){ GroundElevation = ptSensor.readAltitude(SEALEVELPRESSURE_HPA); } XBee.println("Ground Elevation Set");
-
-	// Print out packet format
-	packet = "TEAM_ID,MISSION_TIME,PACKET_COUNT,SW_STATE, PL_STATE,ALTITUDE, TEMP, VOLTAGE, GPS_LATITUDE, GPS_LONGITUDE, GYRO_R,GYRO_P,GYRO_Y";
-	for(unsigned i = 0; i < packet.size(); i++){ XBee.print(packet[i]);} XBee.println();
-
-	pinMode(BuzzerPin, OUTPUT); pinMode(LEDPin, OUTPUT);
-	packetTimer = time(0);
-
-	oldAlt = 0; velocity = 0;
-  delay(1000);
+	while(!ptSensor.performReading()){ /* XBee.println("Failed to perform reading"); */ }
+	for(unsigned i = 0; i < 100; i++){ GroundElevation = ptSensor.readAltitude(SEALEVELPRESSURE_HPA); } //XBee.println("Ground Elevation Set");
+	delay(1000);
 }
 
 void loop(void){
-  //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
-  sensors_event_t orientationData , angVelocityData , linearAccelData, magnetometerData, accelerometerData, gravityData;
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-  bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-  bno.getEvent(&magnetometerData, Adafruit_BNO055::VECTOR_MAGNETOMETER);
-  bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
-  bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
-
-  printEvent(&orientationData);
-  printEvent(&angVelocityData);
-  printEvent(&linearAccelData);
-  printEvent(&magnetometerData);
-  printEvent(&accelerometerData);
-  printEvent(&gravityData);
-
-  int8_t boardTemp = bno.getTemp();
-  Serial.println();
-  Serial.print(F("temperature: "));
-  Serial.println(boardTemp);
-
-  uint8_t system, gyro, accel, mag = 0;
-  bno.getCalibration(&system, &gyro, &accel, &mag);
-  Serial.println();
-  Serial.print("Calibration: Sys=");
-  Serial.print(system);
-  Serial.print(" Gyro=");
-  Serial.print(gyro);
-  Serial.print(" Accel=");
-  Serial.print(accel);
-  Serial.print(" Mag=");
-  Serial.println(mag);
-
-  Serial.println("--");
-  delay(BNO055_SAMPLERATE_DELAY_MS);
+	sensors_event_t orientationData , angVelocityData; // Check official examples for data expansions if needed
+	bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+	bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+	
+	voltage = NULL; // UPDATE
+	gps_time = NULL; // UPDATE
+	temperature = NULL; // UPDATE
+	pressure = NULL; // UPDATE
+	altitude = NULL; // UPDATE
+	tilt_x = orientationData.orientation.x;
+	tilt_y = orientationData.orientation.y;
+	//double rot_z = angVelocityData->;
 }
-
-void printEvent(sensors_event_t* event) {
-  double x = -1000000, y = -1000000 , z = -1000000; //dumb values, easy to spot problem
-  if (event->type == SENSOR_TYPE_ACCELEROMETER) {
-    Serial.print("Accl:");
-    x = event->acceleration.x;
-    y = event->acceleration.y;
-    z = event->acceleration.z;
-  }
-  else if (event->type == SENSOR_TYPE_ORIENTATION) {
-    Serial.print("Orient:");
-    x = event->orientation.x;
-    y = event->orientation.y;
-    z = event->orientation.z;
-  }
-  else if (event->type == SENSOR_TYPE_MAGNETIC_FIELD) {
-    Serial.print("Mag:");
-    x = event->magnetic.x;
-    y = event->magnetic.y;
-    z = event->magnetic.z;
-  }
-  else if (event->type == SENSOR_TYPE_GYROSCOPE) {
-    Serial.print("Gyro:");
-    x = event->gyro.x;
-    y = event->gyro.y;
-    z = event->gyro.z;
-  }
-  else if (event->type == SENSOR_TYPE_ROTATION_VECTOR) {
-    Serial.print("Rot:");
-    x = event->gyro.x;
-    y = event->gyro.y;
-    z = event->gyro.z;
-  }
-  else if (event->type == SENSOR_TYPE_LINEAR_ACCELERATION) {
-    Serial.print("Linear:");
-    x = event->acceleration.x;
-    y = event->acceleration.y;
-    z = event->acceleration.z;
-  }
-  else if (event->type == SENSOR_TYPE_GRAVITY) {
-    Serial.print("Gravity:");
-    x = event->acceleration.x;
-    y = event->acceleration.y;
-    z = event->acceleration.z;
-  }
-  else {
-    Serial.print("Unk:");
-  }
-
-  Serial.print("\tx= ");
-  Serial.print(x);
-  Serial.print(" |\ty= ");
-  Serial.print(y);
-  Serial.print(" |\tz= ");
-  Serial.println(z);
-}
-
