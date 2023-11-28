@@ -47,14 +47,30 @@ SoftwareSerial XBee(XBeeRX, XBeeTX);
 SoftwareSerial SD(SDRX, SDTX);
 
 unsigned GroundElevation;
-double voltage;
-double gps_time;
-double temperature;
-double pressure;
-double altitude;
-double tilt_x;
-double tilt_y;
-//double rot_z;
+char missionTime[9]; // "HH:MM:SS"
+unsigned packetCount = 0; // packets
+char mode; // F or S
+char state[18]; // ROCKET_SEPARATION is the longest state name
+float altitude; // X.X m
+unsigned airSpeed; // X m/s
+char hsDeployed; // P or N
+char pcDeployed; // C or N
+float temperature; // X.X degrees Celsius
+float pressure; // X.X kPa
+double voltage; // X.X volts
+char gpsTime[9]; // HH:MM:SS
+float gpsAltitude; // X.x m
+float gpsLatitude; // X.XXXX m
+float gpsLongitude; // X.XXXX m
+unsigned gpsStats; // X satellites
+float tiltX; // X.XX degrees
+float tiltY; // X.XX degrees
+double rotZ; // X.X degrees/s
+
+char gsCmd[64];
+_Bool cx = 1;
+_Bool simE = 0;
+_Bool bcn = 0;
 
 void setup(void){
 	Serial.begin(9600);
@@ -83,12 +99,54 @@ void loop(void){
 	bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
 	bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
 	
-	voltage = NULL; // UPDATE
-	gps_time = NULL; // UPDATE
-	temperature = NULL; // UPDATE
-	pressure = NULL; // UPDATE
-	altitude = NULL; // UPDATE
-	tilt_x = orientationData.orientation.x;
-	tilt_y = orientationData.orientation.y;
-	//double rot_z = angVelocityData->;
+	if(XBee.available() > 0){
+		XBee.readBytesUntil('\0', gsCmd, 64);
+		if(strcmp(gsCmd, "CMD,2079,CX,") == 0){
+			if(strcmp(gsCmd+12, "ON") == 0){ cx = 1; }
+			else if(strcmp(gsCmd+12, "OFF") == 0){ cx = 0; }
+		}
+		if(strcmp(gsCmd, "CMD,2079,ST,") == 0){}
+		if(strcmp(gsCmd, "CMD,2079,SIM,") == 0){
+			if(strcmp(gsCmd+13, "ENABLE") == 0){ simE = 1; }
+			if(strcmp(gsCmd+13, "ACTIVATE") == 0 && simE){ mode = 'S'; }
+			if(strcmp(gsCmd+13, "DISABLE") == 0){ simE = 0; mode = 'F'; }
+		}
+		if(strcmp(gsCmd, "CMD,2079,SIMP,") == 0 && mode == 'S'){}
+		if(strcmp(gsCmd, "CMD,2079,CAL") == 0){ GroundElevation = altitude; }
+		if(strcmp(gsCmd, "CMD,2079,BCN,") == 0){
+			if(strcmp(gsCmd+13, "ON") == 0){ bcn = 1; }
+			else if(strcmp(gsCmd+13, "OFF") == 0){ bcn = 0; }
+		}
+		if(strcmp(gsCmd, "CMD,2079,STATE,") == 0){
+			if(strncmp(gsCmd+14, "ROCKET_SEPARATION") == 0){}
+			else if(strncmp(gsCmd+14, "HS_RELEASE") == 0){}
+			else if(strncmp(gsCmd+14, "LANDED") == 0){}
+			else if(strncmp(gsCmd+14, "RESTART") == 0){}
+		}
+	}
+	// Get data
+	if(mode == 'F'){
+		//altitude; // X.X m
+		//pressure; // X.X kPa
+	}
+	//missionTime[9]; // "HH:MM:SS"
+	//packetCount = 0; // packets
+	//mode; // F or S
+	//state[18]; // ROCKET_SEPARATION is the longest state name
+	//airSpeed; // X m/s
+	//hsDeployed; // P or N
+	//pcDeployed; // C or N
+	//temperature // X.X degrees Celsius
+	//voltage; // X.X volts
+	//gpsTime[9]; // HH:MM:SS
+	//gpsAltitude; // X.x m
+	//gpsLatitude; // X.XXXX m
+	//gpsLongitude; // X.XXXX m
+	//gpsStats; // X satellites
+	//tiltX = orientationData.orientation.x;
+	//tiltY = orientationData.orientation.y;
+	//rotZ; // X.X degrees/s
+	if(cx){} //Send packets
+	if(bcn){}
 }
+
