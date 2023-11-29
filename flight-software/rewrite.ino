@@ -26,6 +26,8 @@
 
 #define BHigh digitalWrite(BuzzerPin, HIGH)
 #define BLow digitalWrite(BuzzerPin, LOW)
+#define LHigh digitalWrite(LEDPin, HIGH)
+#define LLow digitalWrite(LEDPin, LOW)
 
 #define AscentHeight 5
 #define ReleaseHeight 760
@@ -123,6 +125,7 @@ void loop(void){
 			else if(strncmp(gsCmd+14, "LANDED") == 0){}
 			else if(strncmp(gsCmd+14, "RESTART") == 0){}
 		}
+		if(strcmp(gsCmd, "CMD,2079,WIPE") == 0){}
 	}
 	// Get data
 	if(mode == 'F'){
@@ -147,6 +150,11 @@ void loop(void){
 	//tiltY = orientationData.orientation.y;
 	//rotZ; // X.X degrees/s
 	if(cx){} //Send packets
-	if(bcn){}
+	if(bcn){
+		BHigh; LHigh;
+		delay(250);
+		BLow; LLow;
+		delay(250);
+	}
 }
 
