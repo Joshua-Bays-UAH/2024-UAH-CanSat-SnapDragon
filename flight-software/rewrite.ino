@@ -40,7 +40,7 @@
 #define SEALEVELPRESSURE_HPA (1013.25)
 
 
-Adafruit_BMP3XX ptSensor; // Adafruit BMP 388 pressure and temperature sensor
+Adafruit_BMP3XX bmp; // Adafruit BMP 388 pressure and temperature sensor
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
 
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
@@ -84,15 +84,15 @@ void setup(void){
 	while(!bno.begin()){ Serial.println("BNO055 not found"); delay(100); }
 
 	XBee.println("Adafruit BMP388 / BMP390 test");
-	if(!ptSensor.begin_I2C()){ XBee.println("Could not find a valid BMP3 sensor, check wiring!"); }
+	if(!bmp.begin_I2C()){ XBee.println("Could not find a valid BMP3 sensor, check wiring!"); }
 
 	// Set up oversampling, filter initialization, and ground elevation
-	ptSensor.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
-	ptSensor.setPressureOversampling(BMP3_OVERSAMPLING_4X);
-	ptSensor.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
-	ptSensor.setOutputDataRate(BMP3_ODR_50_HZ);
-	while(!ptSensor.performReading()){ /* XBee.println("Failed to perform reading"); */ }
-	for(unsigned i = 0; i < 100; i++){ GroundElevation = ptSensor.readAltitude(SEALEVELPRESSURE_HPA); } //XBee.println("Ground Elevation Set");
+	bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+	bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+	bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+	bmp.setOutputDataRate(BMP3_ODR_50_HZ);
+	while(!bmp.performReading()){ /* XBee.println("Failed to perform reading"); */ }
+	for(unsigned i = 0; i < 100; i++){ GroundElevation = bmp.readAltitude(SEALEVELPRESSURE_HPA); } //XBee.println("Ground Elevation Set");
 	delay(1000);
 }
 
@@ -120,10 +120,10 @@ void loop(void){
 			else if(strcmp(gsCmd+13, "OFF") == 0){ bcn = 0; }
 		}
 		if(strcmp(gsCmd, "CMD,2079,STATE,") == 0){
-			if(strncmp(gsCmd+14, "ROCKET_SEPARATION") == 0){}
-			else if(strncmp(gsCmd+14, "HS_RELEASE") == 0){}
-			else if(strncmp(gsCmd+14, "LANDED") == 0){}
-			else if(strncmp(gsCmd+14, "RESTART") == 0){}
+			if(strcmp(gsCmd+14, "ROCKET_SEPARATION") == 0){}
+			else if(strcmp(gsCmd+14, "HS_RELEASE") == 0){}
+			else if(strcmp(gsCmd+14, "LANDED") == 0){}
+			else if(strcmp(gsCmd+14, "RESTART") == 0){}
 		}
 		if(strcmp(gsCmd, "CMD,2079,WIPE") == 0){}
 	}
@@ -131,6 +131,9 @@ void loop(void){
 	if(mode == 'F'){
 		//altitude; // X.X m
 		//pressure; // X.X kPa
+	}else if(mode == 's'){
+		// pressure read from GS command
+		altitude = 44330.0 * (1.0 - pow((pressure / 100.0F) / SEALEVELPRESSURE_HPA, 0.1903));
 	}
 	//missionTime[9]; // "HH:MM:SS"
 	//packetCount = 0; // packets
