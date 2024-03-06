@@ -106,7 +106,11 @@ void loop(void){
 	/* delay(BNO055_SAMPLERATE_DELAY_MS); */
 
 	bmp388.startForcedConversion();
-	bmp388.getMeasurements(temperature, pressure, altitude);
+	bmp388.getTemperature(temperature);
+	if(!simA){
+		bmp388.getPressure(pressure);
+		bmp388.getAltitude(altitude);
+	}
 
 	if(GroundAltitude == 0 && altitude > 0){ GroundAltitude = altitude; }
 
