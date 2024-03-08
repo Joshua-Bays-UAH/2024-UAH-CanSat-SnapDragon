@@ -15,4 +15,5 @@
 #define PacketLength 512
 #define CmdLength 64
 
-
+#define LEDPin 3
+#define BuzzerPin 28
