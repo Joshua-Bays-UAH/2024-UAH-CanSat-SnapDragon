@@ -5,6 +5,7 @@
 #include <Adafruit_BNO055.h>
 #include <BMP388_DEV.h>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
+#include <107-Arduino-Servo-RP2040.h>
 
 #include <string.h>
 #include <utility/imumaths.h>
@@ -55,6 +56,8 @@ BMP388_DEV bmp; /* BMP 388 sensor */
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
 SFE_UBLOX_GNSS m8q; /* GPS sensor*/
 
+static _107_::Servo releaseServo; /* Aerobrake release servo */
+static _107_::Servo camServo; /* Aerobrake release servo */
 
 SoftwareSerial XBee(0, 1); // RX, TX
 SoftwareSerial SD(5, 4); /* OpenLog SD Card */
@@ -101,17 +104,17 @@ void setup(void){
 	}
 	Serial.println("M8Q connected.");
 	m8q.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-
+	
+	releaseServo.attach(releaseServoPin);
+	camServo.attach(camServoPin);
+	
 	pinMode(LEDPin, OUTPUT);
 	pinMode(BuzzerPin, OUTPUT);
 	pinMode(CamPin, OUTPUT);
-	pinMode(ServoPin, OUTPUT);
 	digitalWrite(CamPin, HIGH);
-	digitalWrite(CamPin, HIGH);
-	Serial.println("button pressed");
 	delay(500);
 	digitalWrite(CamPin, LOW);
-	Serial.println("button released");
+	Serial.println("camera on");
 
 	packetTimer = millis();
 	veloTimer = millis();
@@ -152,6 +155,7 @@ void loop(void){
 	}else if(state == 3 && altitude-GroundAltitude <= HRAltitutde){
 	ChangeHRelease:
 		state++;
+		releaseServo.writeMicroseconds(2000);
 	}else if(state == 4 && altitude-GroundAltitude <= LandAlt){
 	ChangeLanded:
 		state++;
@@ -164,6 +168,9 @@ void loop(void){
 		delay(5000);
 		digitalWrite(CamPin, LOW);
 	}
+	camServo.writeMicroseconds((event.gyro.pitch/180)+1500);
+
+	
 
 	/* Command handling */
 	if(XBee.available()){
@@ -207,4 +214,6 @@ void loop(void){
 		packetTimer = millis();
 	}
 }
+
+
 

@@ -16,6 +16,7 @@
 #define CmdLength 64
 
 #define CamPin 15
-#define ServoPin 16
+#define releaseServoPin 16
+#define camServoPin 16
 #define LEDPin 3
 #define BuzzerPin 28
