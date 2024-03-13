@@ -104,6 +104,14 @@ void setup(void){
 
 	pinMode(LEDPin, OUTPUT);
 	pinMode(BuzzerPin, OUTPUT);
+	pinMode(CamPin, OUTPUT);
+	pinMode(ServoPin, OUTPUT);
+	digitalWrite(CamPin, HIGH);
+	digitalWrite(CamPin, HIGH);
+	Serial.println("button pressed");
+	delay(500);
+	digitalWrite(CamPin, LOW);
+	Serial.println("button released");
 
 	packetTimer = millis();
 	veloTimer = millis();
@@ -147,10 +155,14 @@ void loop(void){
 	}else if(state == 4 && altitude-GroundAltitude <= LandAlt){
 	ChangeLanded:
 		state++;
+		cx = 0;
 		landedTimer = millis();
 		o = 1;
 		digitalWrite(LEDPin, HIGH);
 		digitalWrite(BuzzerPin, HIGH);
+		digitalWrite(CamPin, HIGH);
+		delay(5000);
+		digitalWrite(CamPin, LOW);
 	}
 
 	/* Command handling */

@@ -15,5 +15,7 @@
 #define PacketLength 512
 #define CmdLength 64
 
+#define CamPin 15
+#define ServoPin 16
 #define LEDPin 3
 #define BuzzerPin 28
