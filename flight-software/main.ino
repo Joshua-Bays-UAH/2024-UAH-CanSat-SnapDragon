@@ -42,6 +42,7 @@ char cmd[CmdLength]; char c;
 
 float GroundAltitude = 0;
 float pa = 0;
+float simPressure = -1;
 
 long packetTimer;
 long veloTimer;
@@ -51,6 +52,7 @@ bool cx = 1;
 bool bcn = 1;
 bool simE = 0;
 bool simA = 0;
+bool resetGA = 0;
 
 BMP388_DEV bmp; /* BMP 388 sensor */
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
@@ -64,7 +66,7 @@ SoftwareSerial SD(5, 4); /* OpenLog SD Card */
 
 void setup(void){
 	/* Attempt to open Serial line (testing purposes) */
-	Serial.begin(9600);
+	//Serial.begin(9600);
 	//while(!Serial){ delay(500); Serial.begin(9600); }
 
 	/* If Gabe's PCB is used, the following 3 lines are needed */
@@ -130,7 +132,15 @@ void loop(void){
 	bmp.startForcedConversion();
 	if(!simA){
 		bmp.getMeasurements(temperature, pressure, altitude);
-	}else{ pressure = -1; altitude = -1; }
+	}else{
+		/* Fix later */
+		bmp.getMeasurements(temperature, pressure, altitude);
+		bmp.getTempPres(temperature, pressure);
+		//XBee.println(pressure);
+		if(simPressure != -1){ pressure = simPressure / 100; }
+		altitude = ((float)powf(1013.23f / pressure, 0.190223f) - 1.0f) * (temperature + 273.15f) / 0.0065f;
+		if(resetGA && simPressure != -1){ GroundAltitude = altitude; resetGA = 0; }
+	}
 
 	if(GroundAltitude == 0 && altitude > 0){ GroundAltitude = altitude; }
 
@@ -187,9 +197,10 @@ void loop(void){
 			else if(strncmp(cmd+CmdPreLen, "BCN,ON", 6) == 0){ bcn = 1; }
 			else if(strncmp(cmd+CmdPreLen, "BCN,OFF", 7) == 0){ bcn = 0; }
 			else if(strncmp(cmd+CmdPreLen, "SIM,ENABLE", 10) == 0){ simE = 1; }
-			else if(strncmp(cmd+CmdPreLen, "SIM,ACTIVATE", 12) == 0){ if(simE){ simA = 1; } }
+			else if(strncmp(cmd+CmdPreLen, "SIM,ACTIVATE", 12) == 0){ if(simE){ simA = 1; resetGA = 1; } }
 			else if(strncmp(cmd+CmdPreLen, "SIM,DISABLE", 11) == 0){ simE = 0; simA = 0; }
 			else if(strncmp(cmd+CmdPreLen, "STATE,HS_RELEASE", 16) == 0){ state = 3; goto ChangeHRelease; }
+			else if(strncmp(cmd+CmdPreLen, "SIMP,", 5) == 0){ if(simA){ sscanf(cmd+14, "%f", &simPressure); pressure = simPressure; } }
 		}
 		for(int i = 0; i < CmdLength; i++){ cmd[i] = '\0'; }
 	}
@@ -204,7 +215,7 @@ void loop(void){
 	if(cx && millis() - packetTimer >= PacketSpeed){
 		velocity = (altitude - pa); pa = altitude;
 		//sprintf(packet, "%u,%i,%f,%f,%f,%f,%f,%f,%f, %s", TEAM_ID, packet_count, tilt_x, tilt_y, rot_z, temperature, pressure, altitude-GroundAltitude, velocity, States[state]);
-		sprintf(packet, "%u,%u,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+		sprintf(packet, "%u,%u,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
 		//sprintf(packet, "%u,%s,%u,%s,%s,%f,%f,%c,%c,%f,%f,%f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, modes[mode], states[state], altitude, air_speed, hs_deployed, pc_deployed, temperature, voltage, pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
 		packet_count++;
 		
@@ -214,6 +225,4 @@ void loop(void){
 		packetTimer = millis();
 	}
 }
-
-
 
