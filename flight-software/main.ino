@@ -40,6 +40,10 @@ float velocity = 0;
 char packet[PacketLength];
 char cmd[CmdLength]; char c;
 
+int gpsHour = 0;
+int gpsMin = 0;
+int gpsSec = 0;
+
 float GroundAltitude = 0;
 float pa = 0;
 float simPressure = -1;
@@ -51,7 +55,6 @@ long landedTimer;
 bool cx = 1;
 bool bcn = 1;
 bool simE = 0;
-bool simA = 0;
 bool resetGA = 0;
 
 BMP388_DEV bmp; /* BMP 388 sensor */
@@ -106,10 +109,10 @@ void setup(void){
 	}
 	Serial.println("M8Q connected.");
 	m8q.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-	
+
 	releaseServo.attach(releaseServoPin);
 	camServo.attach(camServoPin);
-	
+
 	pinMode(LEDPin, OUTPUT);
 	pinMode(BuzzerPin, OUTPUT);
 	pinMode(CamPin, OUTPUT);
@@ -129,8 +132,36 @@ void loop(void){
 	bno.getCalibration(&sys, &gyro, &accel, &mag);
 	/* delay(BNO055_SAMPLERATE_DELAY_MS); */
 
+	/* Command handling */
+  //Serial.println("Before CMD");
+	if(XBee.available()){
+    //Serial.println("Enter CMD");
+		XBee.readBytesUntil('\n', cmd, sizeof(cmd));
+		//XBee.println(cmd);
+		if(strncmp(cmd, CmdPrefix, CmdPreLen) == 0){
+			if(strncmp(cmd+CmdPreLen, "CX,ON", 5) == 0){ cx = 1; }
+			else if(strncmp(cmd+CmdPreLen, "CX,OFF", 6) == 0){ cx = 0; }
+			else if(strncmp(cmd+CmdPreLen, "CAL", 3) == 0){ GroundAltitude = altitude; }
+			else if(strncmp(cmd+CmdPreLen, "PCKT,", 5) == 0){ sscanf(cmd+14, "%i", &packet_count); }
+			else if(strncmp(cmd+CmdPreLen, "ST,", 3) == 0){
+				if(strncmp(cmd+CmdPreLen, "GPS", 3) == 0){ /* Set to GPS */ }
+				else{ /* Set to manual time */ }}
+			else if(strncmp(cmd+CmdPreLen, "BCN,ON", 6) == 0){ bcn = 1; }
+			else if(strncmp(cmd+CmdPreLen, "BCN,OFF", 7) == 0){ bcn = 0; }
+			else if(strncmp(cmd+CmdPreLen, "SIM,ENABLE", 10) == 0){ simE = 1; }
+			else if(strncmp(cmd+CmdPreLen, "SIM,ACTIVATE", 12) == 0){ if(simE){ mode = 1; resetGA = 1; } }
+			else if(strncmp(cmd+CmdPreLen, "SIM,DISABLE", 11) == 0){ simE = 0; mode = 0; }
+			else if(strncmp(cmd+CmdPreLen, "STATE,HS_RELEASE", 16) == 0){ state = 3; goto ChangeHRelease; }
+			else if(strncmp(cmd+CmdPreLen, "SIMP,", 5) == 0){ if(mode){ sscanf(cmd+14, "%f", &simPressure); pressure = simPressure; } }
+		}
+		for(int i = 0; i < sizeof(cmd_echo); i++){ cmd_echo[i] = '\0'; }
+		strncpy(cmd_echo, cmd+CmdPreLen, CmdLength);
+		for(int i = 0; i < sizeof(cmd); i++){ cmd[i] = '\0'; }
+    //Serial.println("Exit CMD");
+	}
+
 	bmp.startForcedConversion();
-	if(!simA){
+	if(mode == 0){
 		bmp.getMeasurements(temperature, pressure, altitude);
 	}else{
 		/* Fix later */
@@ -141,7 +172,6 @@ void loop(void){
 		altitude = ((float)powf(1013.23f / pressure, 0.190223f) - 1.0f) * (temperature + 273.15f) / 0.0065f;
 		if(resetGA && simPressure != -1){ GroundAltitude = altitude; resetGA = 0; }
 	}
-
 	if(GroundAltitude == 0 && altitude > 0){ GroundAltitude = altitude; }
 
 	tilt_x = event.orientation.x;
@@ -151,7 +181,14 @@ void loop(void){
 	gps_latitude = m8q.getLatitude()/10000000;
 	gps_longitude = m8q.getLongitude()/10000000;
 	gps_altitude = m8q.getAltitude();
-	sprintf(gps_time, "%i:%i:%i", m8q.getHour(), m8q.getMinute(), m8q.getSecond());
+
+	gpsHour = m8q.getHour();
+	gpsMin = m8q.getMinute();
+	gpsSec = m8q.getSecond();
+	for(int i = 0; i < 16; i++){ gps_time[i] = '\0'; }
+	sprintf(gps_time+strlen(gps_time), gpsHour < 10 ? "0%i:" : "%i:", gpsHour);
+	sprintf(gps_time+strlen(gps_time), gpsMin < 10 ? "0%i:" : "%i:", gpsMin);
+	sprintf(gps_time+strlen(gps_time), gpsSec < 10 ? "0%i" : "%i:", gpsSec);
 
 	if(state == 0 && altitude-GroundAltitude >= AscentAlt){
 	ChangeAscent:
@@ -180,49 +217,27 @@ void loop(void){
 	}
 	camServo.writeMicroseconds((event.gyro.pitch/180)+1500);
 
-	
 
-	/* Command handling */
-	if(XBee.available()){
-		XBee.readBytesUntil('\0', cmd, sizeof(cmd));
-		XBee.println(cmd);
-		if(strncmp(cmd, CmdPrefix, CmdPreLen) == 0){
-			if(strncmp(cmd+CmdPreLen, "CX,ON", 5) == 0){ cx = 1; }
-			else if(strncmp(cmd+CmdPreLen, "CX,OFF", 6) == 0){ cx = 0; }
-			else if(strncmp(cmd+CmdPreLen, "CAL", 3) == 0){ GroundAltitude = altitude; }
-			else if(strncmp(cmd+CmdPreLen, "PCKT,", 5) == 0){ sscanf(cmd+14, "%i", &packet_count); }
-			else if(strncmp(cmd+CmdPreLen, "ST,", 3) == 0){
-				if(strncmp(cmd+CmdPreLen, "GPS", 3) == 0){ /* Set to GPS */ }
-				else{ /* Set to manual time */ }}
-			else if(strncmp(cmd+CmdPreLen, "BCN,ON", 6) == 0){ bcn = 1; }
-			else if(strncmp(cmd+CmdPreLen, "BCN,OFF", 7) == 0){ bcn = 0; }
-			else if(strncmp(cmd+CmdPreLen, "SIM,ENABLE", 10) == 0){ simE = 1; }
-			else if(strncmp(cmd+CmdPreLen, "SIM,ACTIVATE", 12) == 0){ if(simE){ simA = 1; resetGA = 1; } }
-			else if(strncmp(cmd+CmdPreLen, "SIM,DISABLE", 11) == 0){ simE = 0; simA = 0; }
-			else if(strncmp(cmd+CmdPreLen, "STATE,HS_RELEASE", 16) == 0){ state = 3; goto ChangeHRelease; }
-			else if(strncmp(cmd+CmdPreLen, "SIMP,", 5) == 0){ if(simA){ sscanf(cmd+14, "%f", &simPressure); pressure = simPressure; } }
-		}
-		for(int i = 0; i < CmdLength; i++){ cmd[i] = '\0'; }
-	}
 
 	if(state == 5 && millis() - landedTimer >= 1000){
 		digitalWrite(LEDPin, o ? LOW : HIGH);
 		digitalWrite(BuzzerPin, o ? LOW : HIGH);
 		o = !o;
 	}
+	strncpy(mission_time, gps_time, 16);
 
 	/* Send telemetry */
 	if(cx && millis() - packetTimer >= PacketSpeed){
 		velocity = (altitude - pa); pa = altitude;
-		//sprintf(packet, "%u,%i,%f,%f,%f,%f,%f,%f,%f, %s", TEAM_ID, packet_count, tilt_x, tilt_y, rot_z, temperature, pressure, altitude-GroundAltitude, velocity, States[state]);
-		sprintf(packet, "%u,%u,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
-		//sprintf(packet, "%u,%s,%u,%s,%s,%f,%f,%c,%c,%f,%f,%f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, modes[mode], states[state], altitude, air_speed, hs_deployed, pc_deployed, temperature, voltage, pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+		//sprintf(packet, "%u,%u,%s,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, Modes[mode], States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
+		sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, pressure/10, voltage, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
 		packet_count++;
-		
+
 		//Serial.println(packet);
 		XBee.println(packet);
-		SD.println(packet);
+		//Serial.println(packet);
 		packetTimer = millis();
 	}
 }
+
 
