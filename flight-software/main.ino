@@ -81,26 +81,26 @@ void setup(void){
 	for(int i = 0; i < 10 && !XBee; i++){
 		delay(150);
 	}
-	Serial.println("XBee connected.");
+	// Serial.println("XBee connected.");
 
 	SD.begin(9600);
 	for(int i = 0; i < 10 && !SD; i++){
 		SD.begin(9600);
 		delay(150);
 	}
-	Serial.println("OpenLog connected.");
+	// Serial.println("OpenLog connected.");
 	for(int i = 0; i < 1 && !bno.begin(); i++){
 		Serial.println("BNO not connected!");
 		delay(150);
 	}
-	Serial.println("BNO connected.");
+	// Serial.println("BNO connected.");
 	bno.setExtCrystalUse(true);
 
 	for(int i = 0; i < 10 && !bmp.begin(); i++){
-		Serial.println("BMP not connected!");
+		// Serial.println("BMP not connected!");
 		delay(150);
 	}
-	Serial.println("BMP connected.");
+	// Serial.println("BMP connected.");
 	bmp.startForcedConversion();
 
 	for(int i = 0; i < 10 && !m8q.begin(); i++){
@@ -108,6 +108,13 @@ void setup(void){
 		delay(150);
 	}
 	Serial.println("M8Q connected.");
+
+	// Make the log packet
+	SD.write(26); SD.write(26); SD.write(26);
+  SD.print("new 00002079.txt"); SD.write(13);
+  SD.print("append 00002079.txt"); SD.write(13);
+  SD.println("HI");
+
 	m8q.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
 
 	releaseServo.attach(releaseServoPin);
@@ -153,6 +160,7 @@ void loop(void){
 			else if(strncmp(cmd+CmdPreLen, "SIM,DISABLE", 11) == 0){ simE = 0; mode = 0; }
 			else if(strncmp(cmd+CmdPreLen, "STATE,HS_RELEASE", 16) == 0){ state = 3; goto ChangeHRelease; }
 			else if(strncmp(cmd+CmdPreLen, "SIMP,", 5) == 0){ if(mode){ sscanf(cmd+14, "%f", &simPressure); pressure = simPressure; } }
+			else if(strncmp(cmd+CmdPreLen, "WIPE", 4) == 0){ SD.println(""); SD.print("rm 00002079.txt"); SD.write(13); SD.print("new 00002079.txt"); SD.write(13); SD.print("append 00002079.txt"); SD.write(13); }
 		}
 		for(int i = 0; i < sizeof(cmd_echo); i++){ cmd_echo[i] = '\0'; }
 		strncpy(cmd_echo, cmd+CmdPreLen, CmdLength);
@@ -235,9 +243,9 @@ void loop(void){
 
 		//Serial.println(packet);
 		XBee.println(packet);
+		SD.println(packet);
 		//Serial.println(packet);
 		packetTimer = millis();
 	}
 }
-
 
