@@ -54,9 +54,11 @@ unsigned long packetTimer;
 unsigned long veloTimer;
 unsigned long hrReleaseTimer;
 unsigned long landedTimer;
+unsigned long bcnTimer;
+short noteCounter = -1;
 
 bool cx = 1;
-bool bcn = 1;
+bool bcn = 0;
 bool simE = 0;
 bool resetGA = 0;
 
@@ -71,6 +73,11 @@ static _107_::Servo camServo; /* Camera control release servo */
 SoftwareSerial XBee(0, 1); // RX, TX
 SoftwareSerial SD(5, 4); /* OpenLog SD Card */
 
+int melody[] = {262, 196, 196, 220, 196, 0, 247, 262};
+int noteDurations[] = {
+  4, 8, 8, 4, 4, 4, 4, 4
+};
+
 bool timer(unsigned long &t, unsigned long l, bool f=1);
 int pid(float a, float b);
 
@@ -80,7 +87,7 @@ void setup(){
 	Wire.setSCL(9);
 	//Wire.begin();
   Serial.begin(9600);
-  while(!Serial){};
+  // while(!Serial){};
 
 	/* Start XBee */
 	XBee.begin(9600);
@@ -137,11 +144,14 @@ void setup(){
 	pinMode(BuzzerPin, OUTPUT);
 
 	/* Start camera */
-	// pinMode(CamPin, OUTPUT);
-	// digitalWrite(CamPin, HIGH);
-	// delay(500);
-	// digitalWrite(CamPin, LOW);
-	// SD.println("camera on");
+	pinMode(CamPin, OUTPUT);
+	pinMode(BonusPin, OUTPUT);
+	digitalWrite(CamPin, HIGH);
+	digitalWrite(BonusPin, HIGH);
+	delay(5000);
+	digitalWrite(CamPin, LOW);
+	digitalWrite(BonusPin, LOW);
+	SD.println("camera on");
 
 	packetTimer = millis();
 	veloTimer = millis();
@@ -171,21 +181,38 @@ void loop(){
 			}else if(strncmp(cmd+CmdPreLen, "ST,", 3) == 0){
 				if(strncmp(cmd+CmdPreLen+3, "GPS", 3) == 0){
 					/* Set to GPS */
-				}else if(strncmp(cmd+CmdPreLen+3, "UTC,", 3) == 0){
+          offHour = 0;
+          offMin = 0;
+          offSec = 0;
+				}else if(strncmp(cmd+CmdPreLen+3, "UTC,", 4) == 0){
 					/* Set to manual time */
 					sscanf(cmd+CmdPreLen+7, "%i", &offHour);
 					sscanf(cmd+CmdPreLen+10, "%i", &offMin);
 					sscanf(cmd+CmdPreLen+13, "%i", &offSec);
-					offHour = m8q.getHour(); offHour += 24; offHour %= 24;
-					offMin = m8q.getMinute(); offMin += 60; offMin %= 60;
-					offSec = m8q.getSecond(); offSec += 60; offSec %= 60;
+					offHour = m8q.getHour() - offHour;
+					offMin = m8q.getMinute() - offMin;
+					offSec = m8q.getSecond() - offSec;
+          offHour += 24;
+          offHour %= 24;
+          offMin += 60;
+          offMin %= 60;
+          offSec += 60;
+          offSec %= 60;
 				}
 			}else if(strncmp(cmd+CmdPreLen, "BCN,ON", 6) == 0){
 				bcn = 1;
+        bcnTimer = millis();
+        noteCounter = 0;
 			}else if(strncmp(cmd+CmdPreLen, "BCN,OFF", 7) == 0){
 				bcn = 0;
+  		  digitalWrite(LEDPin, 0);
+        noteCounter = -1;
+			}else if(strncmp(cmd+CmdPreLen, "STATE,SEPARATE", 14) == 0){
+        goto ChangeSeparate;
 			}else if(strncmp(cmd+CmdPreLen, "STATE,HS_RELEASE", 16) == 0){
         goto ChangeHRelease;
+			}else if(strncmp(cmd+CmdPreLen, "STATE,LANDED", 12) == 0){
+        goto ChangeLanded;
 			}else if(strncmp(cmd+CmdPreLen, "SIM,ENABLE", 10) == 0){
 				simE = 1;
 			}else if(strncmp(cmd+CmdPreLen, "SIM,ACTIVATE", 12) == 0){
@@ -247,17 +274,21 @@ void loop(){
 	gps_longitude = m8q.getLongitude()/10000000;
 	gps_altitude = m8q.getAltitude();
 
-	gpsHour = m8q.getHour() - offHour;
-	gpsMin = m8q.getMinute() - offMin;
-	gpsSec = m8q.getSecond() - offSec;
+	gpsHour = m8q.getHour(); - offHour; gpsHour += 24; gpsHour %= 24;
+	gpsMin = m8q.getMinute(); - offMin; gpsMin += 60; gpsMin %= 60;
+	gpsSec = m8q.getSecond(); - offSec; gpsSec += 60; gpsSec %= 60;
 
 	for(int i = 0; i < 16; i++){
 		gps_time[i] = '\0';
+    mission_time[i] = '\0';
 	}
-	sprintf(gps_time+strlen(gps_time), gpsHour < 10 ? "0%i:" : "%i:", gpsHour);
+	sprintf(mission_time+strlen(mission_time), (gpsHour - offHour + 24)%24 < 10 ? "0%i:" : "%i:", (gpsHour - offHour + 24)%24);
+	sprintf(mission_time+strlen(mission_time), (gpsMin - offHour + 60)%60 < 10 ? "0%i:" : "%i:", (gpsMin - offHour + 60)%60);
+	sprintf(mission_time+strlen(mission_time), (gpsSec - offHour + 60)%60 < 10 ? "0%i" : "%i", (gpsSec - offHour + 60)%60);
+
+  sprintf(gps_time+strlen(gps_time), gpsHour < 10 ? "0%i:" : "%i:", gpsHour);
 	sprintf(gps_time+strlen(gps_time), gpsMin < 10 ? "0%i:" : "%i:", gpsMin);
-	sprintf(gps_time+strlen(gps_time), gpsSec < 10 ? "0%i" : "%i:", gpsSec);
-	strncpy(mission_time, gps_time, 16);
+	sprintf(gps_time+strlen(gps_time), gpsSec < 10 ? "0%i" : "%i", gpsSec);
 
 	if(state == 0 && altitude-GroundAltitude >= AscentAlt){
 	ChangeAscent:
@@ -273,6 +304,7 @@ void loop(){
 		state++;
 		hrReleaseTimer = millis();
 		releaseServo.writeMicroseconds(1000);
+		paraServo.writeMicroseconds(1000);
 	}else if(state == 4 && altitude-GroundAltitude <= LandAlt){
 	ChangeLanded:
 		state++;
@@ -282,17 +314,28 @@ void loop(){
 		digitalWrite(LEDPin, HIGH);
 		digitalWrite(BuzzerPin, HIGH);
 		digitalWrite(CamPin, HIGH);
+		digitalWrite(BonusPin, HIGH);
 		delay(5000);
 		digitalWrite(CamPin, LOW);
+		digitalWrite(BonusPin, LOW);
+		digitalWrite(BuzzerPin, LOW);
+    bcn = 1;
+    bcnTimer = millis();
+    noteCounter = 0;
+
 	}
 
-	// camServo.writeMicroseconds(pid(event.gyro.pitch, event.gyro.roll));
+	camServo.writeMicroseconds(pid(event.gyro.pitch, event.gyro.roll));
 
-	if(timer(landedTimer, 1000, state==5)){
+	if(timer(landedTimer, 1000, bcn)){
 		digitalWrite(LEDPin, landedOn ? LOW : HIGH);
-		digitalWrite(BuzzerPin, landedOn ? LOW : HIGH);
-		landedOn = !landedOn;
+    landedOn = !landedOn;
 	}
+
+  if(noteCounter >= 0 && timer(bcnTimer, Notes[noteCounter][1], 1)){
+    noteCounter++; noteCounter %= NoteCt;
+    tone(BuzzerPin, Notes[noteCounter][0], Notes[noteCounter][1]);
+  }
 
   // if(packetTimer - millis() >= 900){
 	if(timer(packetTimer, PacketSpeed, cx)){
@@ -300,12 +343,13 @@ void loop(){
 		pa = altitude;
 		packet_count++;
 		//sprintf(packet, "%u,%u,%s,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, Modes[mode], States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
-		sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, pressure/10, voltage, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+		sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f!", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, pressure/10, voltage, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
 		XBee.println(packet);
 		// Serial.println(packet);
     packetTimer = millis();
 		//SD.println(packet);
 	}
+
 	// if(timer(hrReleaseTimer, 2000, state == 4)){
 		// releaseServo.writeMicroseconds(1500);
 	// }
@@ -341,5 +385,6 @@ int pid(float a, float b){
   }
   return 1500;
 }
+
 
 
