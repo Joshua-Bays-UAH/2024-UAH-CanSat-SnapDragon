@@ -168,10 +168,13 @@ void loop(){
 				cx = 1;
 			}else if(strncmp(cmd+CmdPreLen, "1", 1) == 0){
 		    releaseServo.writeMicroseconds(1000);
+		    paraServo.writeMicroseconds(1000);
 			}else if(strncmp(cmd+CmdPreLen, "2", 1) == 0){
 		    releaseServo.writeMicroseconds(2000);
+		    paraServo.writeMicroseconds(2000);
 			}else if(strncmp(cmd+CmdPreLen, "3", 1) == 0){
 		    releaseServo.writeMicroseconds(1500);
+		    paraServo.writeMicroseconds(1500);
 			}else if(strncmp(cmd+CmdPreLen, "CX,OFF", 6) == 0){
 				cx = 0;
 			}else if(strncmp(cmd+CmdPreLen, "CAL", 3) == 0){
