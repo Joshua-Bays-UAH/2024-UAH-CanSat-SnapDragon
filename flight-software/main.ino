@@ -329,13 +329,9 @@ void loop(){
 
 	if(timer(landedTimer, 1000, bcn)){
 		digitalWrite(LEDPin, landedOn ? LOW : HIGH);
-    landedOn = !landedOn;
+		digitalWrite(BuzzerPin, landedOn ? LOW : HIGH);
+		landedOn = !landedOn;
 	}
-
-  if(noteCounter >= 0 && timer(bcnTimer, Notes[noteCounter][1], 1)){
-    noteCounter++; noteCounter %= NoteCt;
-    tone(BuzzerPin, Notes[noteCounter][0], Notes[noteCounter][1]);
-  }
 
   // if(packetTimer - millis() >= 900){
 	if(timer(packetTimer, PacketSpeed, cx)){
