@@ -296,6 +296,7 @@ void loop(){
 	}else if(state == 1 && altitude-GroundAltitude >= SeparateAltitude){
 	ChangeSeparate:
 		state++;
+		releaseServo.writeMicroseconds(1000);
 	}else if(state == 2 && velocity <= -.5){
 	ChangeDescent:
 		state++;
@@ -303,7 +304,6 @@ void loop(){
 	ChangeHRelease:
 		state++;
 		hrReleaseTimer = millis();
-		releaseServo.writeMicroseconds(1000);
 		paraServo.writeMicroseconds(1000);
 	}else if(state == 4 && altitude-GroundAltitude <= LandAlt){
 	ChangeLanded:
