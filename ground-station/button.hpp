@@ -7,6 +7,7 @@ class Button{
 		void set_position(float x, float y);
 		void set_size(float w, float h);
 		void set_text(std::string str);
+		void set_colors(sf::Color bgColor, sf::Color textColor);
 		void draw(sf::RenderWindow &window);
 	private:
 };
@@ -17,7 +18,7 @@ Button::Button(float x, float y, float w, float h, sf::Font &font, std::string t
 	text.setString(t);
 	text.setFont(font);
 	text.setCharacterSize(500);
-	text.setFillColor(sf::Color(255, 255, 0));
+	text.setFillColor(sf::Color(0, 0, 0));
 	//text.setScale(w/(text.findCharacterPos(text.getString().getSize() - 1).x - text.findCharacterPos(0).x), 1);
 	//text.setScale(w/(text.findCharacterPos(1).x - text.findCharacterPos(0).x), 1);
 	text.setScale(.9 * bg.getSize().x/text.getGlobalBounds().width, .9 * bg.getSize().y/text.getGlobalBounds().height);
@@ -26,6 +27,11 @@ Button::Button(float x, float y, float w, float h, sf::Font &font, std::string t
 }
 
 void Button::set_text(std::string str){
+}
+
+void Button::set_colors(sf::Color bgColor, sf::Color textColor){
+	bg.setFillColor(bgColor);
+	text.setFillColor(textColor);
 }
 
 void Button::draw(sf::RenderWindow &window){

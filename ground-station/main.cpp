@@ -6,12 +6,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "button.hpp"
-#include "graph.hpp"
-#include "defs.hpp"
+#include "defs.hpp" /* Global parameters */
+#include "button.hpp" /* Button class */
+#include "graph.hpp" /* Graph class */
+#include "cmd-funcs.cpp" /* Functions for sending/receiving commands */
+#include "win-funcs.cpp" /* Functions for window interaction */
 
-bool connect_device(FILE* &deviceFile);
-bool mouse_in_range(const sf::Vector2i &mousePos, const sf::Vector2f &objPos, const sf::Vector2f &objSize);
 void update_graphs(Graph &altGraph, Graph &g2);
 
 int main(){
@@ -19,15 +19,20 @@ int main(){
 	FILE* usbDevice;
 	if(connect_device(usbDevice)){
 		printf("Could not find USB device, exiting\n");
-		//return 1;
+		return 1;
 	}
+	std::thread sendThread(get_cmd, std::ref(usbDevice));
+	sendThread.detach();
 	
     sf::RenderWindow window(sf::VideoMode(WinWidth, WinHeight), WinTitle);
 	
 	sf::Font font;
 	font.loadFromFile(FontFile);
 	
-	Button b(DefaultButtonSpacing, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM Enable", 30);
+	Button simEnableBtn(DefaultButtonSpacing, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Enable", 30);
+	Button simActivateBtn(DefaultButtonSpacing*2+DefaultButtonWidth, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Activate", 30);
+	simEnableBtn.set_colors(sf::Color(0x13, 0x5f, 0xd9), sf::Color(0xff - 0x13, 0xff - 0x5f, 0xff - 0xd9));
+	simActivateBtn.set_colors(sf::Color(0x13, 0x5f, 0xd9), sf::Color(0xff - 0x13, 0xff - 0x5f, 0xff - 0xd9));
 	
 	Graph altGraph(20);
 	Graph g2(20);
@@ -45,8 +50,14 @@ int main(){
 					window.close();
 					break;
 				case sf::Event::MouseButtonPressed:
-					if(mouse_in_range(mouse.getPosition(window), b.bg.getPosition(), b.bg.getSize())){
-						printf("Simulation mode enabled\n");
+					if(mouse_clicked(mouse, simEnableBtn, window)){
+						char buff[] = "SIM,ENABLE";
+						std::thread t(send_cmd, std::ref(usbDevice), buff, sizeof(buff));
+						t.detach();
+					}else if(mouse_clicked(mouse, simActivateBtn, window)){
+						char buff[] = "SIM,ACTIVATE";
+						std::thread t(send_cmd, std::ref(usbDevice), buff, sizeof(buff));
+						t.detach();
 					}
 					break;
 			}
@@ -55,34 +66,13 @@ int main(){
         window.clear(sf::Color(0x4b, 0x22, 0xbf));
         window.draw(altGraph.points);
         window.draw(g2.points);
-		b.draw(window);
+		simEnableBtn.draw(window);
+		simActivateBtn.draw(window);
         window.display();
     }
 	updateThread.detach();
 	
     return 0;
-}
-
-bool connect_device(FILE* &deviceFile){
-	int x = 0; int max = 32;
-	char fileName[6];
-	strncpy(fileName, "COM", sizeof(fileName));
-	do{
-		sprintf(fileName+3, "%i", x);
-		deviceFile = fopen(fileName, "r+");
-		x++;
-	}while(deviceFile == NULL && x < max);
-	return deviceFile == NULL;
-}
-
-bool mouse_in_range(const sf::Vector2i &mousePos, const sf::Vector2f &objPos, const sf::Vector2f &objSize){
-	if(mousePos.x < objPos.x || mousePos.y < objPos.y){
-		return 0;
-	}
-	if(mousePos.x > objPos.x + objSize.x || mousePos.y > objPos.y + objSize.y){
-		return 0;
-	}
-	return 1;
 }
 
 void update_graphs(Graph &altGraph, Graph &g2){
@@ -92,3 +82,4 @@ void update_graphs(Graph &altGraph, Graph &g2){
 		sf::sleep(sf::milliseconds(100));
 	}
 }
+
