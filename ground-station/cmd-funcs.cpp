@@ -27,6 +27,8 @@ void send_cmd(FILE* &deviceFile, char *str, int strSize){
 
 void get_cmd(FILE* &deviceFile){
 	char buff[256];
+	printf("Enter all commands to be sent to the XBee here\n");
+	printf("Do not include the command prefix (%s)\n\n", CmdPrefix);
 	while(1){
 		fgets(buff, sizeof(buff), stdin);
 		buff[strnlen(buff, sizeof(buff)) - 1] = '\0';

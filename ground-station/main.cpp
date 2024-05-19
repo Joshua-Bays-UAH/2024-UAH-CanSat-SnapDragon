@@ -1,6 +1,10 @@
 #include <SFML/Graphics.hpp>
-#include <thread>
 
+#include <deque>
+#include <thread>
+#include <limits>
+
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -12,7 +16,8 @@
 #include "cmd-funcs.cpp" /* Functions for sending/receiving commands */
 #include "win-funcs.cpp" /* Functions for window interaction */
 
-void update_graphs(Graph &altGraph, Graph &g2);
+void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2);
+void update_graphs(Graph &altGraph, Graph &g2, sf::RenderWindow &window);
 
 int main(){
 	srand(time(0));
@@ -31,15 +36,14 @@ int main(){
 	
 	Button simEnableBtn(DefaultButtonSpacing, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Enable", 30);
 	Button simActivateBtn(DefaultButtonSpacing*2+DefaultButtonWidth, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Activate", 30);
-	simEnableBtn.set_colors(sf::Color(0x13, 0x5f, 0xd9), sf::Color(0xff - 0x13, 0xff - 0x5f, 0xff - 0xd9));
-	simActivateBtn.set_colors(sf::Color(0x13, 0x5f, 0xd9), sf::Color(0xff - 0x13, 0xff - 0x5f, 0xff - 0xd9));
+	simEnableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	simActivateBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	
-	Graph altGraph(20);
-	Graph g2(20);
-	g2.points[0].position.x = 400;
-	g2.points[1].position.x = 400;
+	Graph altGraph(15, 5, 5, 200, 200, font, "Altitude");
+	Graph g2(15, 450, 5, 200, 200, font, "Speed");
 	
-	std::thread updateThread(update_graphs, std::ref(altGraph), std::ref(g2));
+	std::thread updateThread(update_graphs, std::ref(altGraph), std::ref(g2), std::ref(window));
+	//std::thread drawGraphThread(draw_graphs, std::ref(window), std::ref(altGraph), std::ref(g2));
 	
     while(window.isOpen()){
         sf::Event event;
@@ -63,11 +67,11 @@ int main(){
 			}
         }
 		
-        window.clear(sf::Color(0x4b, 0x22, 0xbf));
-        window.draw(altGraph.points);
-        window.draw(g2.points);
+        window.clear(WinBgColor);
 		simEnableBtn.draw(window);
 		simActivateBtn.draw(window);
+		altGraph.draw(window);
+		g2.draw(window);
         window.display();
     }
 	updateThread.detach();
@@ -75,11 +79,19 @@ int main(){
     return 0;
 }
 
-void update_graphs(Graph &altGraph, Graph &g2){
+void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2){
+	altGraph.draw(window);
+	g2.draw(window);
+}
+
+void update_graphs(Graph &altGraph, Graph &g2, sf::RenderWindow &window){
 	while(1){
-		altGraph.add_point(-1);
-		g2.add_point(-1);
-		sf::sleep(sf::milliseconds(100));
+		altGraph.add_point(rand() % 200);
+		g2.add_point(-400 + rand() % 800);
+		//altGraph.generate_points();
+		//g2.generate_points();
+		//altGraph.draw(window);
+		sf::sleep(sf::milliseconds(200));
 	}
 }
 
