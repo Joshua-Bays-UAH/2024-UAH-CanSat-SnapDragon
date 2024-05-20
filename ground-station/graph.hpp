@@ -4,7 +4,7 @@ class Graph{
 		int maxPoints;
 		sf::Vector2f position;
 		sf::Vector2f maxSize;
-		std::deque<float> values;
+		std::deque<float> values = {0, 0, 0};
 		//float min = std::numeric_limits<float>::max();
 		//float max = std::numeric_limits<float>::min();
 		float min = 0;

@@ -13,6 +13,7 @@
 #include "defs.hpp" /* Global parameters */
 #include "button.hpp" /* Button class */
 #include "graph.hpp" /* Graph class */
+#include "packet.hpp" /* Packet class */
 #include "cmd-funcs.cpp" /* Functions for sending/receiving commands */
 #include "win-funcs.cpp" /* Functions for window interaction */
 
@@ -85,9 +86,17 @@ void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2){
 }
 
 void update_graphs(Graph &altGraph, Graph &g2, sf::RenderWindow &window){
+	float f1, f2;
+	char buff[16];
 	while(1){
-		altGraph.add_point(rand() % 200);
-		g2.add_point(-400 + rand() % 800);
+		printf("Enter points:\n");
+		//fgets(buff, sizeof(buff), stdin);
+		scanf("%f", &f1);
+		scanf("%f", &f2);
+		altGraph.add_point(f1);
+		g2.add_point(f2);
+		//altGraph.add_point(rand() % 200);
+		//g2.add_point(-400 + rand() % 800);
 		//altGraph.generate_points();
 		//g2.generate_points();
 		//altGraph.draw(window);
