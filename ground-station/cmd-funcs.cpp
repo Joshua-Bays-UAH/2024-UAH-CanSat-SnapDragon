@@ -1,38 +1,30 @@
-bool connect_device(FILE* &deviceFile);
-void send_cmd(FILE* &deviceFile, char *str, int strSize);
-void get_cmd(FILE* &deviceFile);
+void set_port(int &port);
+void send_cmd(char *str, int strSize, int port);
+void get_cmd(int port);
 
-
-bool connect_device(FILE* &deviceFile){
-	int x = 0; int max = 32;
-	char fileName[6];
-	strncpy(fileName, "COM", sizeof(fileName));
-	do{
-		sprintf(fileName+3, "%i", x);
-		deviceFile = fopen(fileName, "r+");
-		x++;
-	}while(deviceFile == NULL && x < max);
-	if(deviceFile != NULL){
-		deviceFile = fopen(fileName, "w");
-		fprintf(deviceFile, "");
-		deviceFile = fopen(fileName, "r+");
+void set_port(int &port){
+	char mode[]={'8','N','1',0};
+	while(RS232_OpenComport(port, 9600, mode, 0)){
+		printf("Can not open comport\n");
+		port++;
 	}
-	return deviceFile == NULL;
 }
 
-void send_cmd(FILE* &deviceFile, char *str, int strSize){
-	fprintf(deviceFile, "CMD,2079,%s\n", str);
+void send_cmd(char *str, int strSize, int port){
+	char buff[strSize + 10];
+	sprintf(buff, "CMD,2079,%s\n", str);
+	RS232_cputs(port, buff);
 }
 
 
-void get_cmd(FILE* &deviceFile){
+void get_cmd(int port){
 	char buff[256];
+	char b[256];
 	printf("Enter all commands to be sent to the XBee here\n");
 	printf("Do not include the command prefix (%s)\n\n", CmdPrefix);
-	for(;;){}
 	while(1){
 		fgets(buff, sizeof(buff), stdin);
 		buff[strnlen(buff, sizeof(buff)) - 1] = '\0';
-		send_cmd(deviceFile, buff, sizeof(buff));
+		send_cmd(buff, sizeof(buff), port);
 	}
 }

@@ -3,7 +3,7 @@ class Button{
 		sf::RectangleShape bg;
 		sf::Text text;
 		
-		Button(float x, float y, float w, float h, sf::Font &font, std::string t, int fontSize);
+		Button(float x, float y, float w, float h, sf::Font &font, std::string str);
 		void set_position(float x, float y);
 		void set_size(float w, float h);
 		void set_text(std::string str);
@@ -12,10 +12,10 @@ class Button{
 	private:
 };
 
-Button::Button(float x, float y, float w, float h, sf::Font &font, std::string t, int fontSize){
+Button::Button(float x, float y, float w, float h, sf::Font &font, std::string str){
 	bg.setPosition(x, y);
 	bg.setSize(sf::Vector2f(w, h));
-	text.setString(t);
+	text.setString(str);
 	text.setFont(font);
 	text.setCharacterSize(500);
 	text.setFillColor(sf::Color(0, 0, 0));
