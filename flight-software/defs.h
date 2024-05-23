@@ -11,15 +11,15 @@
 #define HRAltitutde 100 /* Altitude to release heat shield (Should be 100) */
 #define LandAlt 5 /* Altitude to determine if landed (Should be 5) */
 
-
 #define PacketLength 512
 #define CmdLength 64
+#define CmdTermChar 0x7e
 
 #define CamPin 15
 #define BonusPin 14
-#define paraServoPin 20
-#define releaseServoPin 18
-#define camServoPin 19
+#define paraServoPin 21
+#define releaseServoPin 19
+#define camServoPin 18
 #define LEDPin 17
 #define BuzzerPin 16
 

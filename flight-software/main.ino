@@ -161,7 +161,8 @@ uint8_t sys, gyro, accel, mag = 0;
 void loop(){
 	/* Command handling */
 	if(XBee.available()){
-		XBee.readBytesUntil('\n', cmd, sizeof(cmd));
+		XBee.readBytesUntil(CmdTermChar, cmd, sizeof(cmd));
+    cmd[strlen(cmd)] = '\0';
     // Serial.println(cmd);
 		if(strncmp(cmd, CmdPrefix, CmdPreLen) == 0){
 			if(strncmp(cmd+CmdPreLen, "CX,ON", 5) == 0){
@@ -233,10 +234,22 @@ void loop(){
 				}
 			}
       // Serial.println(cmd);
-			for(int i = 0; i < sizeof(cmd_echo); i++){
+			char buff[sizeof(cmd_echo)];
+      for(int i = 0; i < sizeof(cmd_echo); i++){
 				cmd_echo[i] = '\0';
+        buff[i] = '\0';
 			}
 			strncpy(cmd_echo, cmd+CmdPreLen, CmdLength);
+      Serial.println(cmd);
+      Serial.println(cmd_echo);
+      int o = 0;
+      for(int i = 0; i < strlen(cmd_echo); i++){
+        if(cmd_echo[i] == ','){ continue; }
+        buff[strlen(buff)] = cmd_echo[i];
+      }
+      strncpy(cmd_echo, buff, sizeof(cmd_echo));
+      Serial.println(cmd_echo);
+      Serial.println("");
       // Serial.println(cmd_echo);
 			for(int i = 0; i < sizeof(cmd); i++){
 				cmd[i] = '\0';
@@ -342,7 +355,7 @@ void loop(){
 		pa = altitude;
 		packet_count++;
 		//sprintf(packet, "%u,%u,%s,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, Modes[mode], States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
-		sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f!", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, pressure/10, voltage, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+		sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, pressure/10, voltage, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
 		XBee.println(packet);
 		// Serial.println(packet);
     packetTimer = millis();
@@ -384,6 +397,5 @@ int pid(float a, float b){
   }
   return 1500;
 }
-
 
 
