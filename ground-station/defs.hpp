@@ -5,7 +5,12 @@
 
 //#define FontFile "fonts/static/Cinzel-Regular.ttf"
 //#define FontFile "fonts/Sacramento-Regular.ttf"
-#define FontFile "fonts/Freeman/Freeman-Regular.ttf"
+//#define FontFile "fonts/Freeman/Freeman-Regular.ttf"
+//#define FontFile "fonts/EncodeSansExpanded-Thin.ttf"
+#define FontFile "fonts/EncodeSansExpanded-Medium.ttf"
+//#define FontFile "fonts/Jersey_10/Jersey10-Regular.ttf"
+//#define FontFile "fonts/PlayfairDisplay-VariableFont_wght.ttf"
+//#define FontFile "fonts/VarelaRound-Regular.ttf"
 
 #define DefaultButtonWidth 250
 #define DefaultButtonHeight 150
@@ -15,3 +20,5 @@
 #define DefaultButtonTextColor sf::Color(0xff, 0xff, 0xff)
 
 #define CmdPrefix "CMD,2079,"
+
+#define LogFileName "2079-output.csv"

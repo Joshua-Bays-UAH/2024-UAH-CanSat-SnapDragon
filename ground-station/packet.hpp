@@ -1,5 +1,8 @@
 class Packet{
 	public:
+		bool changed = 0;
+		std::string packetString;
+		
 		int teamId;
 		char timeVals[16];
 		int packetCount;
@@ -24,7 +27,7 @@ class Packet{
 		
 		Packet();
 		Packet(char *str, unsigned strLen);
-		void parse_packet(char *str, unsigned strLen);
+		void parse_packet(const char *str, unsigned strLen);
 		void print();
 	private:
 };
@@ -36,7 +39,7 @@ Packet::Packet(char *str, unsigned strLen){
 	parse_packet(str, strLen);
 }
 
-void Packet::parse_packet(char *str, unsigned strLen){
+void Packet::parse_packet(const char *str, unsigned strLen){
 	int startIndex = 0;
 	int endIndex = 0;
 	char buff[64];
@@ -188,6 +191,8 @@ void Packet::parse_packet(char *str, unsigned strLen){
 	snprintf(buff, endIndex-startIndex+2, "%s", str+startIndex);
 	startIndex = endIndex + 2;
 	sscanf(buff, "%s", cmdEcho);
+	
+	changed = 1;
 }
 
 void Packet::print(){

@@ -20,17 +20,14 @@
 #include "win-funcs.cpp" /* Functions for window interaction */
 
 void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2);
-void read_packet(int port, std::string &packet);
-void update_graphs(Graph &altGraph, Graph &g2, sf::RenderWindow &window);
+void packet_handler(int port, Packet &packet);
+void update_graphs(Graph &altGraph, Graph &g2, Packet &packet);
 
-int main(){
+int main(int argc, char* argv[]){
 	srand(time(0));
-	unsigned char buf[4096];
+	//unsigned char buf[4096];
 	int port = 16; set_port(port);
-
-	std::string packet;
-	std::thread	readThread(read_packet, port, std::ref(packet));
-	readThread.detach();
+	FILE* logFile = fopen(LogFileName, "a");
 	
 	std::thread sendThread(get_cmd, port);
 	sendThread.detach();
@@ -45,19 +42,18 @@ int main(){
 	simEnableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	simActivateBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	
-	Graph altGraph(15, 5, 5, 200, 200, font, "Altitude");
-	Graph g2(15, 450, 5, 200, 200, font, "Speed");
+	Graph altGraph(15, 5, 5, 175, 175, font, "Altitude");
+	Graph g2(15, 305, 5, 175, 175, font, "  Speed ");
 	
-	std::thread updateThread(update_graphs, std::ref(altGraph), std::ref(g2), std::ref(window));
-	//std::thread drawGraphThread(draw_graphs, std::ref(window), std::ref(altGraph), std::ref(g2));
+	Packet packet;
 	
-	int x = 5;
-	Label l(x , 500, WinWidth - 10, 40, font, "2079,01:16:03,5,SIMULATION,LAUNCH_WAIT,-0.6,0.000000,N,N,25.0,99.6,0.0,01:16:03,0.000000,0.000000,0.000000,0,0.000000,0.000000,0.000000,SIM,ACTIVATE,,-0.069962");
-	l.set_text("I like waffles I like waffles I like waffles I like waffles I like waffles I like waffles I like waffles I like waffles I like waffles I like waffles!");
-	l.set_text("I like waffles");
+	int x = 775;
+	Label packetLabel(x , 5, WinWidth - x - 5, 15, font, std::string(95, '*'));
+
+	std::thread	readThread(packet_handler, port, std::ref(packet));
+	readThread.detach();
 	
     while(window.isOpen()){
-		l.set_text(packet);
         sf::Event event;
 		sf::Mouse mouse;
         while (window.pollEvent(event)){
@@ -79,15 +75,20 @@ int main(){
 			}
         }
 		
+		if(packet.changed){
+			update_graphs(altGraph, g2, packet);
+			packetLabel.set_text(packet.packetString);
+			packet.changed = 0;
+		}
+		
         window.clear(WinBgColor);
 		simEnableBtn.draw(window);
 		simActivateBtn.draw(window);
 		altGraph.draw(window);
 		g2.draw(window);
-		l.draw(window);
+		packetLabel.draw(window);
         window.display();
     }
-	updateThread.detach();
 	
     return 0;
 }
@@ -97,29 +98,41 @@ void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2){
 	g2.draw(window);
 }
 
-void read_packet(int port, std::string &packet){
+void packet_handler(int port, Packet &packet){
 	unsigned char buff[256];
 	int bytesRead = 0;
 	while(1){
 		bytesRead = RS232_PollComport(port, buff, sizeof(buff));
 		if(bytesRead > 0){
-			printf("C: %s\n", buff);
-			std::string str (reinterpret_cast<const char *> (buff), sizeof (buff) / sizeof (buff[0]));
-			packet = str;
+			buff[bytesRead] = 0;
+			//printf("B: %i\n", bytesRead);
+			//printf("P: %s_\n", buff);
+			for(int i = 0; i < bytesRead; i++){
+				packet.packetString += buff[i];
+			}
+			if(buff[bytesRead - 1] == '\n'){
+				packet.packetString = packet.packetString.substr(0, packet.packetString.size() - 2);
+				printf("S: %li | %s\n", packet.packetString.size(), packet.packetString.c_str());
+				packet.parse_packet(packet.packetString.c_str(), packet.packetString.size());
+				sf::sleep(sf::milliseconds(502));
+				packet.packetString = "";
+			}
 		}
+		for(int i = sizeof(buff); i--;){ buff[i] = 0; }
 	}
 }
 
-void update_graphs(Graph &altGraph, Graph &g2, sf::RenderWindow &window){
+void update_graphs(Graph &altGraph, Graph &g2, Packet &packet){
 	float f1, f2;
 	char buff[16];
-	while(1){
+	//while(1){
+		altGraph.add_point(packet.altitude);
 		//altGraph.add_point(rand() % 200);
-		//g2.add_point(-400 + rand() % 800);
+		g2.add_point(-400 + rand() % 800);
 		//altGraph.generate_points();
 		//g2.generate_points();
 		//altGraph.draw(window);
-		sf::sleep(sf::milliseconds(200));
-	}
+		//sf::sleep(sf::milliseconds(200));
+	//}
 }
 
