@@ -41,16 +41,29 @@ int main(int argc, char* argv[]){
 	Button simEnableBtn(DefaultMargin, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Enable");
 	Button simActivateBtn(DefaultMargin+DefaultButtonWidth+DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Activate");
 	Button simStartBtn(DefaultMargin+2*DefaultButtonWidth+2*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Start");
+	Button simDisableBtn(DefaultMargin+3*DefaultButtonWidth+3*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Disable");
+	Button bcnOnBtn(DefaultMargin+4*DefaultButtonWidth+4*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Beacon On");
+	Button bcnOffBtn(DefaultMargin+5*DefaultButtonWidth+5*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Beacon Off");
+	Button cxOnBtn(DefaultMargin+6*DefaultButtonWidth+6*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry On");
+	Button cxOffBtn(DefaultMargin+7*DefaultButtonWidth+7*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry Off");
+	Button calBtn(DefaultMargin, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "CAL");
+	
 	simEnableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	simActivateBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	simStartBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	simDisableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	bcnOnBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	bcnOffBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	cxOnBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	cxOffBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	calBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	
 	Graph altGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Altitude");
 	Graph g2(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "  Speed ");
 	
 	int x = g2.position.x + g2.maxSize.x + 5.5*DefaultSpacing;
 	Label packetLabel(x, 5, WinWidth - x - 5, 15, font, std::string(LineWrapCount + 15, '*'));
-
+	
 	Packet packet;
 	std::thread	readThread(packet_handler, port, std::ref(packet));
 	readThread.detach();
@@ -71,9 +84,35 @@ int main(int argc, char* argv[]){
 					}else if(mouse_clicked(mouse, simActivateBtn, window)){
 						char buff[] = "SIM,ACTIVATE";
 						std::thread t(send_cmd, buff, sizeof(buff), port);
+						simMode = 1;
 						t.detach();
 					}else if(mouse_clicked(mouse, simStartBtn, window)){
 						std::thread t(sim_mode, port);
+						t.detach();
+					}else if(mouse_clicked(mouse, simDisableBtn, window)){
+						char buff[] = "SIM,DISABLE";
+						std::thread t(send_cmd, buff, sizeof(buff), port);
+						simMode = 0;
+						t.detach();
+					}else if(mouse_clicked(mouse, bcnOnBtn, window)){
+						char buff[] = "BCN,ON";
+						std::thread t(send_cmd, buff, sizeof(buff), port);
+						t.detach();
+					}else if(mouse_clicked(mouse, bcnOffBtn, window)){
+						char buff[] = "BCN,OFF";
+						std::thread t(send_cmd, buff, sizeof(buff), port);
+						t.detach();
+					}else if(mouse_clicked(mouse, cxOnBtn, window)){
+						char buff[] = "CX,ON";
+						std::thread t(send_cmd, buff, sizeof(buff), port);
+						t.detach();
+					}else if(mouse_clicked(mouse, cxOffBtn, window)){
+						char buff[] = "CX,OFF";
+						std::thread t(send_cmd, buff, sizeof(buff), port);
+						t.detach();
+					}else if(mouse_clicked(mouse, calBtn, window)){
+						char buff[] = "CAL";
+						std::thread t(send_cmd, buff, sizeof(buff), port);
 						t.detach();
 					}
 					break;
@@ -91,6 +130,12 @@ int main(int argc, char* argv[]){
 		simEnableBtn.draw(window);
 		simActivateBtn.draw(window);
 		simStartBtn.draw(window);
+		simDisableBtn.draw(window);
+		bcnOnBtn.draw(window);
+		bcnOffBtn.draw(window);
+		cxOnBtn.draw(window);
+		cxOffBtn.draw(window);
+		calBtn.draw(window);
 		altGraph.draw(window);
 		g2.draw(window);
 		packetLabel.draw(window);
@@ -123,6 +168,7 @@ void packet_handler(int port, Packet &packet){
 				packet.packetString = packet.packetString.substr(0, packet.packetString.size() - 2);
 				//printf("S: %li | %s\n", packet.packetString.size(), packet.packetString.c_str());
 				packet.parse_packet(packet.packetString.c_str(), packet.packetString.size());
+				printf("R: %s!\n", packet.packetString.c_str());
 				sf::sleep(sf::milliseconds(502));
 				packet.packetString = "";
 			}
