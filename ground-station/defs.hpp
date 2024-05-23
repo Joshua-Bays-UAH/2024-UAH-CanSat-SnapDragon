@@ -12,12 +12,20 @@
 //#define FontFile "fonts/PlayfairDisplay-VariableFont_wght.ttf"
 //#define FontFile "fonts/VarelaRound-Regular.ttf"
 
-#define DefaultButtonWidth 250
-#define DefaultButtonHeight 150
-#define DefaultButtonSpacing 20
+#define LineWrapCount 85
+
+#define DefaultButtonWidth 210
+#define DefaultButtonHeight 110
 #define DefaultButtonBgColor sf::Color(0x13, 0x5f, 0xd9)
 //#define DefaultButtonTextColor sf::Color(0xff - 0x13, 0xff - 0x5f, 0xff - 0xd9)
 #define DefaultButtonTextColor sf::Color(0xff, 0xff, 0xff)
+
+#define DefaultGraphWidth 175
+#define DefaultGraphHeight 175
+#define DefaultGraphPoints 20
+
+#define DefaultMargin 5
+#define DefaultSpacing 20
 
 #define CmdPrefix "CMD,2079,"
 

@@ -24,9 +24,9 @@ Label::Label(float x, float y, float w, float h, sf::Font &font, std::string str
 void Label::set_text(std::string str){
 	int f = 1;
 	//text.setCharacterSize(5);
-	if(str.size() > 75){
+	if(str.size() > LineWrapCount){
 		f = 2;
-		std::string s = str.substr(0, 75)+"\n"+str.substr(75);
+		std::string s = str.substr(0, LineWrapCount)+"\n"+str.substr(LineWrapCount);
 		//std::string s = str;
 		text.setString(s);
 	}else{

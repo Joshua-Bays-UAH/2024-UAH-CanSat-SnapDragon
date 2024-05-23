@@ -1,6 +1,7 @@
 class Packet{
 	public:
 		bool changed = 0;
+		unsigned total = 0;
 		std::string packetString;
 		
 		int teamId;
@@ -193,6 +194,7 @@ void Packet::parse_packet(const char *str, unsigned strLen){
 	sscanf(buff, "%s", cmdEcho);
 	
 	changed = 1;
+	total++;
 }
 
 void Packet::print(){

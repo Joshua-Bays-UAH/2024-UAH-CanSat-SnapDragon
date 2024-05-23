@@ -28,6 +28,7 @@ int main(int argc, char* argv[]){
 	//unsigned char buf[4096];
 	int port = 16; set_port(port);
 	FILE* logFile = fopen(LogFileName, "a");
+	fprintf(logFile, "TEAM_ID,MISSION_TIME,PACKET_COUNT,MODE,STATE,ALTITUDE,AIR_SPEED,HS_DEPLOYED,PC_DEPLOYED,TEMPERATURE,VOLTAGE,PRESSURE,GPS_TIME,GPS_ALTITUDE,GPS_LATITUDE,GPS_LONGITUDE,GPS_SATS,TILT_X,TILT_Y,ROT_Z,CMD_ECHO,,VELOCITY");
 	
 	std::thread sendThread(get_cmd, port);
 	sendThread.detach();
@@ -37,19 +38,18 @@ int main(int argc, char* argv[]){
 	sf::Font font;
 	font.loadFromFile(FontFile);
 	
-	Button simEnableBtn(DefaultButtonSpacing, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Enable");
-	Button simActivateBtn(DefaultButtonSpacing*2+DefaultButtonWidth, WinHeight - DefaultButtonSpacing - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Activate");
+	Button simEnableBtn(DefaultMargin, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Enable");
+	Button simActivateBtn(DefaultMargin+DefaultButtonWidth+DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Activate");
 	simEnableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	simActivateBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	
-	Graph altGraph(15, 5, 5, 175, 175, font, "Altitude");
-	Graph g2(15, 305, 5, 175, 175, font, "  Speed ");
+	Graph altGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Altitude");
+	Graph g2(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "  Speed ");
 	
-	Packet packet;
-	
-	int x = 775;
-	Label packetLabel(x , 5, WinWidth - x - 5, 15, font, std::string(95, '*'));
+	int x = g2.position.x + g2.maxSize.x + 5.5*DefaultSpacing;
+	Label packetLabel(x, 5, WinWidth - x - 5, 15, font, std::string(LineWrapCount + 15, '*'));
 
+	Packet packet;
 	std::thread	readThread(packet_handler, port, std::ref(packet));
 	readThread.detach();
 	
@@ -76,8 +76,9 @@ int main(int argc, char* argv[]){
         }
 		
 		if(packet.changed){
-			update_graphs(altGraph, g2, packet);
 			packetLabel.set_text(packet.packetString);
+			update_graphs(altGraph, g2, packet);
+			fprintf(logFile, "%s\n", packet.packetString.c_str());
 			packet.changed = 0;
 		}
 		
@@ -89,6 +90,8 @@ int main(int argc, char* argv[]){
 		packetLabel.draw(window);
         window.display();
     }
+	
+	fclose(logFile);
 	
     return 0;
 }
@@ -112,7 +115,7 @@ void packet_handler(int port, Packet &packet){
 			}
 			if(buff[bytesRead - 1] == '\n'){
 				packet.packetString = packet.packetString.substr(0, packet.packetString.size() - 2);
-				printf("S: %li | %s\n", packet.packetString.size(), packet.packetString.c_str());
+				//printf("S: %li | %s\n", packet.packetString.size(), packet.packetString.c_str());
 				packet.parse_packet(packet.packetString.c_str(), packet.packetString.size());
 				sf::sleep(sf::milliseconds(502));
 				packet.packetString = "";
