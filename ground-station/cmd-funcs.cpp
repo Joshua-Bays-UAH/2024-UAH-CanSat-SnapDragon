@@ -1,6 +1,7 @@
 void set_port(int &port);
 void send_cmd(char *str, int strSize, int port);
-void get_cmd(int port);
+void get_cmd_input(int port);
+void sim_mode(int port);
 
 void set_port(int &port){
 	char mode[]={'8','N','1',0};
@@ -11,13 +12,12 @@ void set_port(int &port){
 }
 
 void send_cmd(char *str, int strSize, int port){
-	char buff[strSize + 10];
-	sprintf(buff, "CMD,2079,%s\n", str);
+	char buff[strSize + 11];
+	sprintf(buff, "CMD,2079,%s%c", str, CmdTermChar);
 	RS232_cputs(port, buff);
 }
 
-
-void get_cmd(int port){
+void get_cmd_input(int port){
 	char buff[256];
 	char b[256];
 	printf("Enter all commands to be sent to the XBee here\n");
@@ -26,5 +26,33 @@ void get_cmd(int port){
 		fgets(buff, sizeof(buff), stdin);
 		buff[strnlen(buff, sizeof(buff)) - 1] = '\0';
 		send_cmd(buff, sizeof(buff), port);
+	}
+}
+
+void sim_mode(int port){
+	FILE *readFile = fopen(SimpFileName, "r");
+	char buff[128];
+	
+	sprintf(buff, "SIM,ENABLE");
+	send_cmd(buff, sizeof(buff), port);
+	sf::sleep(sf::milliseconds(1000));
+	
+	sprintf(buff, "SIM,ACTIVATE");
+	send_cmd(buff, sizeof(buff), port);
+	sf::sleep(sf::milliseconds(1000));
+	
+	sprintf(buff, "PCKT,0");
+	send_cmd(buff, sizeof(buff), port);
+	sf::sleep(sf::milliseconds(1000));
+	
+	while(fgets(buff, sizeof(buff), readFile) != NULL){
+		if(strncmp(buff, "CMD,$,SIMP,", 11) == 0){
+			sprintf(buff, "%s", buff+6);
+			send_cmd(buff, sizeof(buff), port);
+			//fprintf(usbFile, "%s", buff);
+			sleep(1);
+		}else{
+			printf("%s!\n", buff);
+		}
 	}
 }
