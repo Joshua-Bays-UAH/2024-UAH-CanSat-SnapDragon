@@ -26,7 +26,10 @@
 
 #define DefaultMargin 5
 #define DefaultSpacing 20
+#define CmdTermChar 0x7e
 
 #define CmdPrefix "CMD,2079,"
 
 #define LogFileName "2079-output.csv"
+#define SimpFileName "cansat_2024_simp.txt"
+

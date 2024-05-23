@@ -30,7 +30,7 @@ int main(int argc, char* argv[]){
 	FILE* logFile = fopen(LogFileName, "a");
 	fprintf(logFile, "TEAM_ID,MISSION_TIME,PACKET_COUNT,MODE,STATE,ALTITUDE,AIR_SPEED,HS_DEPLOYED,PC_DEPLOYED,TEMPERATURE,VOLTAGE,PRESSURE,GPS_TIME,GPS_ALTITUDE,GPS_LATITUDE,GPS_LONGITUDE,GPS_SATS,TILT_X,TILT_Y,ROT_Z,CMD_ECHO,,VELOCITY");
 	
-	std::thread sendThread(get_cmd, port);
+	std::thread sendThread(get_cmd_input, port);
 	sendThread.detach();
 	
     sf::RenderWindow window(sf::VideoMode(WinWidth, WinHeight), WinTitle);
@@ -40,8 +40,10 @@ int main(int argc, char* argv[]){
 	
 	Button simEnableBtn(DefaultMargin, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Enable");
 	Button simActivateBtn(DefaultMargin+DefaultButtonWidth+DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Activate");
+	Button simStartBtn(DefaultMargin+2*DefaultButtonWidth+2*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Start");
 	simEnableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	simActivateBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	simStartBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
 	
 	Graph altGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Altitude");
 	Graph g2(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "  Speed ");
@@ -70,6 +72,9 @@ int main(int argc, char* argv[]){
 						char buff[] = "SIM,ACTIVATE";
 						std::thread t(send_cmd, buff, sizeof(buff), port);
 						t.detach();
+					}else if(mouse_clicked(mouse, simStartBtn, window)){
+						std::thread t(sim_mode, port);
+						t.detach();
 					}
 					break;
 			}
@@ -85,6 +90,7 @@ int main(int argc, char* argv[]){
         window.clear(WinBgColor);
 		simEnableBtn.draw(window);
 		simActivateBtn.draw(window);
+		simStartBtn.draw(window);
 		altGraph.draw(window);
 		g2.draw(window);
 		packetLabel.draw(window);
