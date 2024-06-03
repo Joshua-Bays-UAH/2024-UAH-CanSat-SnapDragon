@@ -36,18 +36,18 @@ void sim_mode(int port){
 	FILE *readFile = fopen(SimpFileName, "r");
 	char buff[128];
 	
-	sprintf(buff, "SIM,ENABLE");
+	//sprintf(buff, "SIM,ENABLE");
 	send_cmd(buff, sizeof(buff), port);
-	sf::sleep(sf::milliseconds(1000));
+	sf::sleep(sf::milliseconds(1500));
 	
-	sprintf(buff, "SIM,ACTIVATE");
+	//sprintf(buff, "SIM,ACTIVATE");
 	send_cmd(buff, sizeof(buff), port);
-	sf::sleep(sf::milliseconds(1000));
+	sf::sleep(sf::milliseconds(1500));
 	simMode = 1;
 	
 	sprintf(buff, "PCKT,0");
 	send_cmd(buff, sizeof(buff), port);
-	sf::sleep(sf::milliseconds(1000));
+	sf::sleep(sf::milliseconds(2000));
 	
 	while(fgets(buff, sizeof(buff), readFile) != NULL){
 		if(strncmp(buff, "CMD,$,SIMP,", 11) == 0 && simMode){

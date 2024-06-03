@@ -13,14 +13,14 @@ class Packet{
 		float airSpeed;
 		char hsDeployed;
 		char pcDeployed;
-		float temp;
+		float temperature;
 		float voltage;
 		float pressure;
 		char gpsTime[16];
 		float gpsAlt;
 		float gpsLat;
 		float gpsLong;
-		int gpsStats;
+		int gpsSats;
 		float tiltX;
 		float tiltY;
 		float rotZ;
@@ -114,7 +114,7 @@ void Packet::parse_packet(const char *str, unsigned strLen){
 	}
 	snprintf(buff, endIndex-startIndex+2, "%s", str+startIndex);
 	startIndex = endIndex + 2;
-	sscanf(buff, "%f", &temp);
+	sscanf(buff, "%f", &temperature);
 	
 	for(int i = startIndex; i < strnlen(str, strLen) && str[i] != ','; i++){
 		endIndex = i;
@@ -163,7 +163,7 @@ void Packet::parse_packet(const char *str, unsigned strLen){
 	}
 	snprintf(buff, endIndex-startIndex+2, "%s", str+startIndex);
 	startIndex = endIndex + 2;
-	sscanf(buff, "%i", &gpsStats);
+	sscanf(buff, "%i", &gpsSats);
 	
 	for(int i = startIndex; i < strnlen(str, strLen) && str[i] != ','; i++){
 		endIndex = i;
@@ -207,14 +207,14 @@ void Packet::print(){
 	printf("Airspeed: %f\n", airSpeed);
 	printf("HS: %c\n", hsDeployed);
 	printf("PC: %c\n", pcDeployed);
-	printf("Temperature: %f\n", temp);
+	printf("Temperature: %f\n", temperature);
 	printf("Voltage: %f\n", voltage);
 	printf("Pressure: %f\n", pressure);
 	printf("GPS Time: %s\n", gpsTime);
 	printf("GPS Altitude: %f\n", gpsAlt);
 	printf("GPS Latitude: %f\n", gpsLat);
 	printf("GPS longitude: %f\n", gpsLong);
-	printf("GPS Satellites %i\n", gpsStats);
+	printf("GPS Satellites %i\n", gpsSats);
 	printf("Tilt X: %f\n", tiltX);
 	printf("Tilt Y: %f\n", tiltY);
 	printf("Rotation Z: %f\n", rotZ);

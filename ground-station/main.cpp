@@ -19,16 +19,16 @@
 #include "cmd-funcs.cpp" /* Functions for sending/receiving commands */
 #include "win-funcs.cpp" /* Functions for window interaction */
 
-void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2);
+void draw_graphs(sf::RenderWindow &window, Graph &altitudeGraph, Graph &airSpeedGraph);
 void packet_handler(int port, Packet &packet);
-void update_graphs(Graph &altGraph, Graph &g2, Packet &packet);
+void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Packet &packet);
 
 int main(int argc, char* argv[]){
 	srand(time(0));
 	//unsigned char buf[4096];
 	int port = 16; set_port(port);
 	FILE* logFile = fopen(LogFileName, "a");
-	fprintf(logFile, "TEAM_ID,MISSION_TIME,PACKET_COUNT,MODE,STATE,ALTITUDE,AIR_SPEED,HS_DEPLOYED,PC_DEPLOYED,TEMPERATURE,VOLTAGE,PRESSURE,GPS_TIME,GPS_ALTITUDE,GPS_LATITUDE,GPS_LONGITUDE,GPS_SATS,TILT_X,TILT_Y,ROT_Z,CMD_ECHO,,VELOCITY");
+	fprintf(logFile, LogFileHeader);
 	
 	std::thread sendThread(get_cmd_input, port);
 	sendThread.detach();
@@ -48,21 +48,30 @@ int main(int argc, char* argv[]){
 	Button cxOffBtn(DefaultMargin+7*DefaultButtonWidth+7*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry Off");
 	Button calBtn(DefaultMargin, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "CAL");
 	
-	simEnableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	simActivateBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	simStartBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	simDisableBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	bcnOnBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	bcnOffBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	cxOnBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	cxOffBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
-	calBtn.set_colors(DefaultButtonBgColor, DefaultButtonTextColor);
+	std::deque<Button *> buttonDeque = {&simEnableBtn, &simActivateBtn, &simStartBtn, &simDisableBtn, &bcnOnBtn, &bcnOffBtn, &cxOnBtn, &cxOffBtn, &calBtn};
+	for(Button *i : buttonDeque){ i->set_colors(DefaultButtonBgColor, DefaultButtonTextColor); }
 	
-	Graph altGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Altitude");
-	Graph g2(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "  Speed ");
+	Graph altitudeGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Altitude");
+	Graph airSpeedGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Air Speed");
+	Graph temperatureGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin+DefaultSpacing*3+DefaultGraphHeight, DefaultGraphWidth, DefaultGraphHeight, font, "Temperature");
+	Graph pressureGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin+DefaultSpacing*3+DefaultGraphHeight, DefaultGraphWidth, DefaultGraphHeight, font, "Pressure");
+	Graph voltageGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Voltage");
+	Graph gpsAltitudeGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth+4.6*DefaultSpacing, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "GPS Altitude");
+	Graph tiltXGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth*2+4.6*DefaultSpacing*2, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Tilt X");
+	Graph tiltYGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth*3+4.6*DefaultSpacing*3, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Tilt Y");
+	Graph rotZGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth*4+4.6*DefaultSpacing*4, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Rotation Z");
+	/* GPS Sats */
 	
-	int x = g2.position.x + g2.maxSize.x + 5.5*DefaultSpacing;
-	Label packetLabel(x, 5, WinWidth - x - 5, 15, font, std::string(LineWrapCount + 15, '*'));
+	std::deque<Graph *> graphDeque = {&altitudeGraph, &airSpeedGraph, &temperatureGraph, &pressureGraph, &voltageGraph, &gpsAltitudeGraph, &tiltXGraph, &tiltYGraph, &rotZGraph};
+
+	int packetLabelX = airSpeedGraph.position.x + airSpeedGraph.maxSize.x + 5.5*DefaultSpacing;
+	Label packetLabel(packetLabelX, 5, WinWidth - packetLabelX - 5, 15, font, std::string(LineWrapCount + 15, '*'));
+	Label packetCountLabel(WinWidth - ValueLabelWidth - DefaultMargin, WinHeight - ValueLabelHeight, ValueLabelWidth, ValueLabelHeight, font, "Packets: XXX");
+	Label gpsSatsLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*2 - DefaultSpacing - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "GPS Satellites: XX");
+	Label StateLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*3 - DefaultSpacing*2 - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "State: "+std::string(12, 'X'));
+	Label modeLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*4 - DefaultSpacing*3 - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "Mode: X");
+	
+	std::deque<Label *> labelDeque = {&packetLabel, &packetCountLabel, &gpsSatsLabel, &StateLabel, &modeLabel};
 	
 	Packet packet;
 	std::thread	readThread(packet_handler, port, std::ref(packet));
@@ -79,41 +88,32 @@ int main(int argc, char* argv[]){
 				case sf::Event::MouseButtonPressed:
 					if(mouse_clicked(mouse, simEnableBtn, window)){
 						char buff[] = "SIM,ENABLE";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
-						t.detach();
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, simActivateBtn, window)){
 						char buff[] = "SIM,ACTIVATE";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 						simMode = 1;
-						t.detach();
 					}else if(mouse_clicked(mouse, simStartBtn, window)){
-						std::thread t(sim_mode, port);
-						t.detach();
+						std::thread(sim_mode, port).detach();
 					}else if(mouse_clicked(mouse, simDisableBtn, window)){
 						char buff[] = "SIM,DISABLE";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 						simMode = 0;
-						t.detach();
 					}else if(mouse_clicked(mouse, bcnOnBtn, window)){
 						char buff[] = "BCN,ON";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
-						t.detach();
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, bcnOffBtn, window)){
 						char buff[] = "BCN,OFF";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
-						t.detach();
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, cxOnBtn, window)){
 						char buff[] = "CX,ON";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
-						t.detach();
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, cxOffBtn, window)){
 						char buff[] = "CX,OFF";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
-						t.detach();
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, calBtn, window)){
 						char buff[] = "CAL";
-						std::thread t(send_cmd, buff, sizeof(buff), port);
-						t.detach();
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}
 					break;
 			}
@@ -121,24 +121,19 @@ int main(int argc, char* argv[]){
 		
 		if(packet.changed){
 			packetLabel.set_text(packet.packetString);
-			update_graphs(altGraph, g2, packet);
+			packetCountLabel.set_text(std::string("Packets: ")+std::to_string(packet.total));
+			gpsSatsLabel.set_text(std::string("GPS Satellites: ")+std::to_string(packet.gpsSats));
+			StateLabel.set_text(std::string("State: ")+packet.state);
+			modeLabel.set_text(std::string("Mode: ")+packet.mode);
+			update_graphs(altitudeGraph, airSpeedGraph, temperatureGraph, pressureGraph, voltageGraph, packet);
 			fprintf(logFile, "%s\n", packet.packetString.c_str());
 			packet.changed = 0;
 		}
 		
         window.clear(WinBgColor);
-		simEnableBtn.draw(window);
-		simActivateBtn.draw(window);
-		simStartBtn.draw(window);
-		simDisableBtn.draw(window);
-		bcnOnBtn.draw(window);
-		bcnOffBtn.draw(window);
-		cxOnBtn.draw(window);
-		cxOffBtn.draw(window);
-		calBtn.draw(window);
-		altGraph.draw(window);
-		g2.draw(window);
-		packetLabel.draw(window);
+		for(Button *i : buttonDeque){ i->draw(window); }
+		for(Graph *i : graphDeque){ i->draw(window); }
+		for(Label *i : labelDeque){ i->draw(window); }
         window.display();
     }
 	
@@ -147,9 +142,9 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
-void draw_graphs(sf::RenderWindow &window, Graph &altGraph, Graph &g2){
-	altGraph.draw(window);
-	g2.draw(window);
+void draw_graphs(sf::RenderWindow &window, Graph &altitudeGraph, Graph &airSpeedGraph){
+	altitudeGraph.draw(window);
+	airSpeedGraph.draw(window);
 }
 
 void packet_handler(int port, Packet &packet){
@@ -168,7 +163,6 @@ void packet_handler(int port, Packet &packet){
 				packet.packetString = packet.packetString.substr(0, packet.packetString.size() - 2);
 				//printf("S: %li | %s\n", packet.packetString.size(), packet.packetString.c_str());
 				packet.parse_packet(packet.packetString.c_str(), packet.packetString.size());
-				printf("R: %s!\n", packet.packetString.c_str());
 				sf::sleep(sf::milliseconds(502));
 				packet.packetString = "";
 			}
@@ -177,17 +171,11 @@ void packet_handler(int port, Packet &packet){
 	}
 }
 
-void update_graphs(Graph &altGraph, Graph &g2, Packet &packet){
-	float f1, f2;
-	char buff[16];
-	//while(1){
-		altGraph.add_point(packet.altitude);
-		//altGraph.add_point(rand() % 200);
-		g2.add_point(-400 + rand() % 800);
-		//altGraph.generate_points();
-		//g2.generate_points();
-		//altGraph.draw(window);
-		//sf::sleep(sf::milliseconds(200));
-	//}
+void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Packet &packet){
+	altitudeGraph.add_point(packet.altitude);
+	airSpeedGraph.add_point(packet.airSpeed);
+	temperatureGraph.add_point(packet.temperature);
+	pressureGraph.add_point(packet.pressure);
+	voltageGraph.add_point(packet.pressure);
 }
 
