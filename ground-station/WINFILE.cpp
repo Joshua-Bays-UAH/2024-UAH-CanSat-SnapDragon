@@ -414,6 +414,18 @@ void Graph::generate_points(){
 	}
 }
 
+Label::Label(float x, float y, float w, float h, sf::Font &font, std::string str){
+	area.setPosition(x, y);
+	area.setSize(sf::Vector2f(w, h));
+	text.setString(str);
+	text.setFont(font);
+	text.setCharacterSize(500);
+	text.setFillColor(sf::Color(0 , 0, 0));
+	text.setScale(area.getSize().x/text.getGlobalBounds().width, area.getSize().y/text.getGlobalBounds().height);
+	text.setPosition(area.getPosition().x, area.getPosition().y);
+	text.move(text.getPosition().x - text.getGlobalBounds().left, text.getPosition().y - text.getGlobalBounds().top);
+}
+
 void Label::set_text(std::string str){
 	int f = 1;
 	//text.setCharacterSize(5);
