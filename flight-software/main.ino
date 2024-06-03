@@ -12,7 +12,7 @@
 
 int landedOn = 0;
 
-const char Modes[2][12] = { "FLIGHT", "SIMULATION" };
+const char Modes[2][12] = { "F", "S" };
 const char States[6][12] = { "LAUNCH_WAIT", "ASCENT", "SEPARATE", "DESCENT", "HS_RELEASE", "LANDED" };
 char mission_time[16] = "";
 unsigned packet_count = 0;
@@ -356,6 +356,7 @@ ChangeAscent:
 ChangeSeparate:
     state++;
     releaseServo.writeMicroseconds(1000);
+    hs_deployed = 'P';
   } else if (state == 2 && velocity <= -.5) {
 ChangeDescent:
     state++;
@@ -364,6 +365,7 @@ ChangeHRelease:
     state++;
     hrReleaseTimer = millis();
     paraServo.writeMicroseconds(1000);
+    pc_deployed = 'C';
   } else if (state == 4 && altitude - GroundAltitude <= LandAlt) {
 ChangeLanded:
     state++;
@@ -397,7 +399,7 @@ ChangeLanded:
     pa = altitude;
     packet_count++;
     //sprintf(packet, "%u,%u,%s,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, Modes[mode], States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
-    sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, pressure / 10, voltage, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+    sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, voltage, pressure / 10, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
     XBee.println(packet);
     // Serial.println(packet);
     packetTimer = millis();
@@ -439,4 +441,5 @@ int pid(float a, float b) {
   }
   return 1500;
 }
+
 

@@ -23,16 +23,3 @@
 #define LEDPin 17
 #define BuzzerPin 16
 
-#include "pitches.h"
-const int Notes[][2] =
-  {{NOTE_C5, 326},
-  {NOTE_E5, 652},
-  {NOTE_E5, 3580},
-  {NOTE_C5, 326},
-  {NOTE_E5, 625},
-  {NOTE_E5, 489},
-  {NOTE_B4, 326},
-  {NOTE_A4, 163},
-  {NOTE_GS4, 2610}};
-
-const int NoteCt = 9;
