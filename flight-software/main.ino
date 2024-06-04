@@ -320,6 +320,9 @@ void loop() {
   tilt_y = event.orientation.y;
   rot_z = event.orientation.z;
 
+  /* Pitot Tube air Speed */
+  air_speed = sqrt((2*abs( (1000*( ((analogRead(Pitot_Pin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
+  
   gps_latitude = m8q.getLatitude() / 10000000;
   gps_longitude = m8q.getLongitude() / 10000000;
   gps_altitude = m8q.getAltitude();
