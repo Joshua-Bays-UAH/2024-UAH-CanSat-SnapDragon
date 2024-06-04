@@ -51,6 +51,7 @@ int offSec = 0;
 float GroundAltitude = 0;
 float pa = 0;
 float simPressure = -1;
+float avgAirSpeed = 0;
 
 unsigned long packetTimer;
 unsigned long veloTimer;
@@ -68,10 +69,9 @@ bool resetGA = 0;
 BMP388_DEV bmp;                                  /* BMP 388 sensor */
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
 SFE_UBLOX_GNSS m8q;                              /* GPS sensor*/
-
-Servo paraServo;    /* Parachute release servo */
-Servo releaseServo; /* Aerobrake release servo */
-Servo camServo;     /* Camera control release servo */
+Servo paraServo;
+Servo releaseServo;
+Servo camServo;
 
 SoftwareSerial XBee(0, 1);  // RX, TX
 SoftwareSerial SD(5, 4);    /* OpenLog SD Card */
@@ -140,12 +140,17 @@ void setup() {
   //paraServo.attach(paraServoPin);
   //releaseServo.attach(releaseServoPin);
   camServo.attach(camServoPin);
- // paraServo.writeMicroseconds(2000);
- // releaseServo.writeMicroseconds(2000);
+  //paraServo.writeMicroseconds(2000);
+  //releaseServo.writeMicroseconds(2000);
 
   /* Initalize pins */
   pinMode(LEDPin, OUTPUT);
   pinMode(BuzzerPin, OUTPUT);
+
+  for(int i = 0; i < 10; i++){
+    avgAirSpeed += sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225);
+  }
+  avgAirSpeed /= 10;
 
   /* Start camera */
   pinMode(CamPin, OUTPUT);
@@ -322,8 +327,8 @@ void loop() {
   rot_z = event.orientation.z;
 
   /* Pitot Tube air Speed */
-  air_speed = sqrt((2*abs( (1000*( ((analogRead(Pitot_Pin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
-  
+  air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
+
   gps_latitude = m8q.getLatitude() / 10000000;
   gps_longitude = m8q.getLongitude() / 10000000;
   gps_altitude = m8q.getAltitude();
@@ -359,9 +364,8 @@ ChangeAscent:
   } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude) {
 ChangeSeparate:
     state++;
-    releaseServo.attach(releaseServoPin);
+	releaseServo.attach(releaseServoPin);
     releaseServo.writeMicroseconds(1000);
-    aeroReleaseTimer = millis();
     hs_deployed = 'P';
   } else if (state == 2 && velocity <= -.5) {
 ChangeDescent:
@@ -370,7 +374,7 @@ ChangeDescent:
 ChangeHRelease:
     state++;
     hrReleaseTimer = millis();
-    paraServo.attach(paraServoPin);
+	paraServo.attach(paraServoPin);
     paraServo.writeMicroseconds(1000);
     pc_deployed = 'C';
   } else if (state == 4 && altitude - GroundAltitude <= LandAlt) {
@@ -392,7 +396,7 @@ ChangeLanded:
     noteCounter = 0;
   }
 
-  camServo.writeMicroseconds(pid(event.gyro.pitch, event.gyro.roll));
+  camServo.writeMicroseconds(pid(event.orientation.x, event.orientation.y));
 
   if (timer(landedTimer, 1000, bcn)) {
     digitalWrite(LEDPin, landedOn ? LOW : HIGH);
@@ -406,20 +410,20 @@ ChangeLanded:
     pa = altitude;
     packet_count++;
     //sprintf(packet, "%u,%u,%s,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, Modes[mode], States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
-    sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed, hs_deployed, pc_deployed, temperature, voltage, pressure / 10, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+    sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%f,%f,%f,%u,%f,%f,%f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed - avgAirSpeed, hs_deployed, pc_deployed, temperature, voltage, pressure / 10, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
     XBee.println(packet);
     // Serial.println(packet);
     packetTimer = millis();
     //SD.println(packet);
   }
 
-  //Servo detach timers
-   if(timer(hrReleaseTimer, 1000, state == 4)){
+  if(timer(hrReleaseTimer, 1000, state == 4)){
    releaseServo.detach();
    }
   if(timer(aeroReleaseTimer, 1000, state == 3)) {
     paraServo.detach();
   }
+
 }
 
 bool timer(unsigned long &t, unsigned long l, bool f) {
