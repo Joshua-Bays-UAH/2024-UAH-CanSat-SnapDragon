@@ -261,7 +261,7 @@ void loop() {
           lock = true;
           lockTimer = millis();
           releaseServo.attach(releaseServoPin);
-          releaseServo.write(180);
+          releaseServo.write(140);
           paraServo.attach(paraServoPin);
           paraServo.write(180);
         }
@@ -347,6 +347,7 @@ ChangeAscent:
   } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude) {
 ChangeSeparate:
     state++;
+	aeroReleaseTimer = millis();
 	  releaseServo.attach(releaseServoPin);
     releaseServo.writeMicroseconds(1000);
     hs_deployed = 'P';
@@ -400,13 +401,13 @@ ChangeLanded:
     //SD.println(packet);
   }
 
-  if(timer(hrReleaseTimer, 1000, state == 4)){
+ if(timer(aeroReleaseTimer, 1000, state != 3)){
    releaseServo.detach();
    }
-  if(timer(aeroReleaseTimer, 1000, state == 3)) {
+  if(timer(hrReleaseTimer, 1000, state > 3)) {
     paraServo.detach();
   }
-  if(timer(lockTimer, 1000, lock)) {
+  if(timer(lockTimer, 500, lock)) {
      paraServo.detach();
      releaseServo.detach();
      lock = false;
