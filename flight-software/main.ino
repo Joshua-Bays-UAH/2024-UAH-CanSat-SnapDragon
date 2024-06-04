@@ -52,6 +52,7 @@ float GroundAltitude = 0;
 float pa = 0;
 float simPressure = -1;
 float avgAirSpeed = 0;
+float apogee = 0;
 
 unsigned long packetTimer;
 unsigned long veloTimer;
@@ -314,6 +315,9 @@ void loop() {
     GroundAltitude = altitude;
   }
 
+  if(altitude - GroundAltitude >= apogee){
+	apogee = altitude - GroundAltitude;
+  }
 
 
   gpsHour = m8q.getHour();
@@ -344,7 +348,7 @@ void loop() {
   if (state == 0 && altitude - GroundAltitude >= AscentAlt) {
 ChangeAscent:
     state++;
-  } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude) {
+  } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude && altiude - GroundAltitude <= apogee - 5){
 ChangeSeparate:
     state++;
 	aeroReleaseTimer = millis();
