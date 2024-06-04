@@ -235,13 +235,10 @@ void loop() {
           digitalWrite(LEDPin, 0);
           noteCounter = -1;
         } else if (strncmp(cmd + CmdPreLen, "STATE,SEPARATE", 14) == 0) {
-		  state = 1;
           goto ChangeSeparate;
         } else if (strncmp(cmd + CmdPreLen, "STATE,HS_RELEASE", 16) == 0) {
-		  state = 3;
           goto ChangeHRelease;
         } else if (strncmp(cmd + CmdPreLen, "STATE,LANDED", 12) == 0) {
-		  state = 4;
           goto ChangeLanded;
         } else if (strncmp(cmd + CmdPreLen, "SIM,ENABLE", 10) == 0) {
           simE = 1;
@@ -308,25 +305,7 @@ void loop() {
     GroundAltitude = altitude;
   }
 
-  /* Sample BNO */
-  sensors_event_t event;
-  bno.getEvent(&event);
-  sys = 0;
-  gyro = 0;
-  accel = 0;
-  mag = 0;
-  bno.getCalibration(&sys, &gyro, &accel, &mag);
-  tilt_x = event.orientation.x;
-  tilt_y = event.orientation.y;
-  rot_z = event.orientation.z;
 
-  /* Pitot Tube air Speed */
-  air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
-  voltage = 0.0064264849 * analogRead(VoltagePin);
-
-  gps_latitude = m8q.getLatitude() / 10000000;
-  gps_longitude = m8q.getLongitude() / 10000000;
-  gps_altitude = m8q.getAltitude();
 
   gpsHour = m8q.getHour();
   -offHour;
@@ -389,6 +368,7 @@ ChangeLanded:
     bcn = 1;
     bcnTimer = millis();
     noteCounter = 0;
+    goto sendPacket;
   }
 
   if (timer(landedTimer, 1000, bcn)) {
@@ -399,6 +379,7 @@ ChangeLanded:
 
   // if(packetTimer - millis() >= 900){
   if (timer(packetTimer, PacketSpeed, cx)) {
+    sendPacket:
     velocity = (altitude - pa);
     pa = altitude;
     packet_count++;
@@ -423,6 +404,22 @@ void loop1(){
   sensors_event_t event;
   bno.getEvent(&event);
   camServo.writeMicroseconds(pid(event.orientation.x - 180, event.orientation.z));
+  sys = 0;
+  gyro = 0;
+  accel = 0;
+  mag = 0;
+  bno.getCalibration(&sys, &gyro, &accel, &mag);
+  tilt_x = event.orientation.x;
+  tilt_y = event.orientation.y;
+  rot_z = event.orientation.z;
+
+  /* Pitot Tube air Speed */
+  air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
+  voltage = 0.0064264849 * analogRead(VoltagePin);
+
+  gps_latitude = m8q.getLatitude() / 10000000;
+  gps_longitude = m8q.getLongitude() / 10000000;
+  gps_altitude = m8q.getAltitude();
   delay(10);
 }
 
@@ -442,6 +439,7 @@ int pid(float a, float b) {
   Serial.println(b);
   Serial.println();
   if (fabs(b) < 120) {
+    // Serial.println("UD");
     if (a > 20) {
       return 1800;
     } else if (a < -20) {
