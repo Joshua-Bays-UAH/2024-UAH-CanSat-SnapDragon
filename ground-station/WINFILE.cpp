@@ -16,7 +16,14 @@
 #define WinTitle "Snapdragon Ground Station"
 #define WinBgColor sf::Color(0x4b, 0x22, 0xbf)
 
+//#define FontFile "fonts/static/Cinzel-Regular.ttf"
+//#define FontFile "fonts/Sacramento-Regular.ttf"
+//#define FontFile "fonts/Freeman/Freeman-Regular.ttf"
+//#define FontFile "fonts/EncodeSansExpanded-Thin.ttf"
 #define FontFile "fonts/EncodeSansExpanded-Medium.ttf"
+//#define FontFile "fonts/Jersey_10/Jersey10-Regular.ttf"
+//#define FontFile "fonts/PlayfairDisplay-VariableFont_wght.ttf"
+//#define FontFile "fonts/VarelaRound-Regular.ttf"
 
 #define LineWrapCount 85
 
@@ -137,9 +144,10 @@ bool simMode = 0;
 bool mouse_in_range(const sf::Vector2i &mousePos, const sf::Vector2f &objPos, const sf::Vector2f &objSize);
 bool mouse_clicked(const sf::Mouse &mouse, const Button btn, sf::Window &win);
 
+
 void draw_graphs(sf::RenderWindow &window, Graph &altitudeGraph, Graph &airSpeedGraph);
 void packet_handler(int port, Packet &packet);
-void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Packet &packet);
+void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Graph &gpsAltitudeGraph, Graph &tiltXGraph, Graph &tiltYGraph, Graph &rotZGraph, Packet &packet);
 
 int main(int argc, char* argv[]){
 	srand(time(0));
@@ -240,7 +248,7 @@ int main(int argc, char* argv[]){
 						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, stUTCBtn, window)){
 						char buff[12] = "ST,";
-						long int n = time(0);
+						time_t n = time(0);
 						struct tm *tim = localtime(&n);
 						unsigned hms[3];
 						hms[0] = tim->tm_hour;
@@ -267,7 +275,7 @@ int main(int argc, char* argv[]){
 			gpsSatsLabel.set_text(std::string("GPS Satellites: ")+std::to_string(packet.gpsSats));
 			StateLabel.set_text(std::string("State: ")+packet.state);
 			modeLabel.set_text(std::string("Mode: ")+packet.mode);
-			update_graphs(altitudeGraph, airSpeedGraph, temperatureGraph, pressureGraph, voltageGraph, packet);
+			update_graphs(altitudeGraph, airSpeedGraph, temperatureGraph, pressureGraph, voltageGraph, gpsAltitudeGraph, tiltXGraph, tiltYGraph, rotZGraph, packet);
 			fprintf(logFile, "%s\n", packet.packetString.c_str());
 			packet.changed = 0;
 		}
@@ -313,12 +321,19 @@ void packet_handler(int port, Packet &packet){
 	}
 }
 
-void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Packet &packet){
+void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Graph &gpsAltitudeGraph, Graph &tiltXGraph, Graph &tiltYGraph, Graph &rotZGraph, Packet &packet){
 	altitudeGraph.add_point(packet.altitude);
 	airSpeedGraph.add_point(packet.airSpeed);
 	temperatureGraph.add_point(packet.temperature);
 	pressureGraph.add_point(packet.pressure);
-	voltageGraph.add_point(packet.pressure);
+	voltageGraph.add_point(packet.voltage);
+	gpsAltitudeGraph.add_point(packet.gpsAlt);
+	tiltXGraph.add_point(packet.tiltX);
+	tiltYGraph.add_point(packet.tiltY);
+	rotZGraph.add_point(packet.rotZ);
+
+
+	
 }
 
 Button::Button(float x, float y, float w, float h, sf::Font &font, std::string str){
@@ -467,6 +482,7 @@ void Label::set_text(std::string str){
 void Label::draw(sf::RenderWindow &window){
 	window.draw(text);
 }
+
 
 Packet::Packet(){}
 
@@ -668,7 +684,7 @@ void set_port(int &port){
 }
 
 void send_cmd(char *str, int strSize, int port){
-	char buff[strSize + 11];
+	char buff[32];
 	sprintf(buff, "CMD,2079,%s%c", str, CmdTermChar);
 	printf("S: %s\n", buff);
 	RS232_cputs(port, buff);
@@ -709,7 +725,7 @@ void sim_mode(int port){
 			sprintf(buff, "%s", buff+6);
 			send_cmd(buff, sizeof(buff), port);
 			//fprintf(usbFile, "%s", buff);
-			sleep(1);
+			sf::sleep(sf::milliseconds(1000));
 		}else{
 			printf("%s!\n", buff);
 		}

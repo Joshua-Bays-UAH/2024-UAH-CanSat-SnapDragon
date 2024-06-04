@@ -5,6 +5,7 @@ void sim_mode(int port);
 
 bool simMode = 0;
 
+
 void set_port(int &port){
 	char mode[]={'8','N','1',0};
 	for(int i = port; i < 32; i++){
@@ -18,7 +19,7 @@ void set_port(int &port){
 }
 
 void send_cmd(char *str, int strSize, int port){
-	char buff[strSize + 11];
+	char buff[32];
 	sprintf(buff, "CMD,2079,%s%c", str, CmdTermChar);
 	printf("S: %s\n", buff);
 	RS232_cputs(port, buff);
@@ -59,7 +60,7 @@ void sim_mode(int port){
 			sprintf(buff, "%s", buff+6);
 			send_cmd(buff, sizeof(buff), port);
 			//fprintf(usbFile, "%s", buff);
-			sleep(1);
+			sf::sleep(sf::milliseconds(1000));
 		}else{
 			printf("%s!\n", buff);
 		}

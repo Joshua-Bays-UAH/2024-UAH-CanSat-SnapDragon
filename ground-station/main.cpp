@@ -21,7 +21,7 @@
 
 void draw_graphs(sf::RenderWindow &window, Graph &altitudeGraph, Graph &airSpeedGraph);
 void packet_handler(int port, Packet &packet);
-void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Packet &packet);
+void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Graph &gpsAltitudeGraph, Graph &tiltXGraph, Graph &tiltYGraph, Graph &rotZGraph, Packet &packet);
 
 int main(int argc, char* argv[]){
 	srand(time(0));
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]){
 						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, stUTCBtn, window)){
 						char buff[12] = "ST,";
-						long int n = time(0);
+						time_t n = time(0);
 						struct tm *tim = localtime(&n);
 						unsigned hms[3];
 						hms[0] = tim->tm_hour;
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]){
 			gpsSatsLabel.set_text(std::string("GPS Satellites: ")+std::to_string(packet.gpsSats));
 			StateLabel.set_text(std::string("State: ")+packet.state);
 			modeLabel.set_text(std::string("Mode: ")+packet.mode);
-			update_graphs(altitudeGraph, airSpeedGraph, temperatureGraph, pressureGraph, voltageGraph, packet);
+			update_graphs(altitudeGraph, airSpeedGraph, temperatureGraph, pressureGraph, voltageGraph, gpsAltitudeGraph, tiltXGraph, tiltYGraph, rotZGraph, packet);
 			fprintf(logFile, "%s\n", packet.packetString.c_str());
 			packet.changed = 0;
 		}
@@ -195,11 +195,18 @@ void packet_handler(int port, Packet &packet){
 	}
 }
 
-void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Packet &packet){
+void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatureGraph, Graph &pressureGraph, Graph &voltageGraph, Graph &gpsAltitudeGraph, Graph &tiltXGraph, Graph &tiltYGraph, Graph &rotZGraph, Packet &packet){
 	altitudeGraph.add_point(packet.altitude);
 	airSpeedGraph.add_point(packet.airSpeed);
 	temperatureGraph.add_point(packet.temperature);
 	pressureGraph.add_point(packet.pressure);
-	voltageGraph.add_point(packet.pressure);
+	voltageGraph.add_point(packet.voltage);
+	gpsAltitudeGraph.add_point(packet.gpsAlt);
+	tiltXGraph.add_point(packet.tiltX);
+	tiltYGraph.add_point(packet.tiltY);
+	rotZGraph.add_point(packet.rotZ);
+
+
+	
 }
 
