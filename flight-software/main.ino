@@ -4,7 +4,7 @@
 #include <Adafruit_BNO055.h>
 #include <BMP388_DEV.h>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
-#include <107-Arduino-Servo-RP2040.h>
+#include <Servo.h>
 
 #include <string.h>
 #include <utility/imumaths.h>
@@ -55,6 +55,7 @@ float simPressure = -1;
 unsigned long packetTimer;
 unsigned long veloTimer;
 unsigned long hrReleaseTimer;
+unsigned long aeroReleaseTimer;
 unsigned long landedTimer;
 unsigned long bcnTimer;
 short noteCounter = -1;
@@ -68,9 +69,9 @@ BMP388_DEV bmp;                                  /* BMP 388 sensor */
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
 SFE_UBLOX_GNSS m8q;                              /* GPS sensor*/
 
-static _107_::Servo paraServo;    /* Parachute release servo */
-static _107_::Servo releaseServo; /* Aerobrake release servo */
-static _107_::Servo camServo;     /* Camera control release servo */
+Servo paraServo;    /* Parachute release servo */
+Servo releaseServo; /* Aerobrake release servo */
+Servo camServo;     /* Camera control release servo */
 
 SoftwareSerial XBee(0, 1);  // RX, TX
 SoftwareSerial SD(5, 4);    /* OpenLog SD Card */
@@ -136,11 +137,11 @@ void setup() {
   // SD.print("new 2079.txt"); SD.write(13);
   // SD.print("append 2079.txt"); SD.write(13);
 
-  paraServo.attach(paraServoPin);
-  releaseServo.attach(releaseServoPin);
+  //paraServo.attach(paraServoPin);
+  //releaseServo.attach(releaseServoPin);
   camServo.attach(camServoPin);
-  paraServo.writeMicroseconds(2000);
-  releaseServo.writeMicroseconds(2000);
+ // paraServo.writeMicroseconds(2000);
+ // releaseServo.writeMicroseconds(2000);
 
   /* Initalize pins */
   pinMode(LEDPin, OUTPUT);
@@ -358,7 +359,9 @@ ChangeAscent:
   } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude) {
 ChangeSeparate:
     state++;
+    releaseServo.attach(releaseServoPin);
     releaseServo.writeMicroseconds(1000);
+    aeroReleaseTimer = millis();
     hs_deployed = 'P';
   } else if (state == 2 && velocity <= -.5) {
 ChangeDescent:
@@ -367,6 +370,7 @@ ChangeDescent:
 ChangeHRelease:
     state++;
     hrReleaseTimer = millis();
+    paraServo.attach(paraServoPin);
     paraServo.writeMicroseconds(1000);
     pc_deployed = 'C';
   } else if (state == 4 && altitude - GroundAltitude <= LandAlt) {
@@ -409,9 +413,13 @@ ChangeLanded:
     //SD.println(packet);
   }
 
-  // if(timer(hrReleaseTimer, 2000, state == 4)){
-  // releaseServo.writeMicroseconds(1500);
-  // }
+  //Servo detach timers
+   if(timer(hrReleaseTimer, 1000, state == 4)){
+   releaseServo.detach();
+   }
+  if(timer(aeroReleaseTimer, 1000, state == 3)) {
+    paraServo.detach();
+  }
 }
 
 bool timer(unsigned long &t, unsigned long l, bool f) {
