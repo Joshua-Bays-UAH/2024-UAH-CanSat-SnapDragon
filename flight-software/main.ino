@@ -59,6 +59,7 @@ unsigned long hrReleaseTimer;
 unsigned long aeroReleaseTimer;
 unsigned long landedTimer;
 unsigned long bcnTimer;
+unsigned long lockTimer;
 short noteCounter = -1;
 
 bool cx = 1;
