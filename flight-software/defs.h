@@ -17,9 +17,11 @@
 
 #define CamPin 15
 #define BonusPin 14
-#define paraServoPin 21
+#define paraServoPin 20
 #define releaseServoPin 19
 #define camServoPin 18
 #define LEDPin 17
 #define BuzzerPin 16
+#define VoltagePin 26
 #define PitotPin 27
+
