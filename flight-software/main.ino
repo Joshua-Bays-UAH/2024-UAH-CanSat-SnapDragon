@@ -65,6 +65,7 @@ bool cx = 1;
 bool bcn = 0;
 bool simE = 0;
 bool resetGA = 0;
+bool lock = false;
 
 BMP388_DEV bmp;                                  /* BMP 388 sensor */
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
@@ -255,6 +256,13 @@ void loop() {
             sscanf(cmd + 14, "%f", &simPressure);
             pressure = simPressure;
           }
+        } else if (strncmp(cmd + CmdPreLen, "LOCK", 4) == 0) {
+          lock = true;
+          lockTimer = millis();
+          releaseServo.attach(releaseServoPin);
+          releaseServo.write(180);
+          paraServo.attach(paraServoPin);
+          paraServo.write(180);
         }
         // Serial.println(cmd);
         char buff[sizeof(cmd_echo)];
@@ -396,6 +404,11 @@ ChangeLanded:
    }
   if(timer(aeroReleaseTimer, 1000, state == 3)) {
     paraServo.detach();
+  }
+  if(timer(lockTimer, 1000, lock)) {
+     paraServo.detach();
+     releaseServo.detach();
+     lock = false;
   }
   Serial.println("END");
 }
