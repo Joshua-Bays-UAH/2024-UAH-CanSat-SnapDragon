@@ -98,7 +98,7 @@ void setup() {
     delay(150);
     XBee.begin(9600);
   }
-  XBee.setTimeout(50);
+  XBee.setTimeout(25);
 
   /* Start OpenLogger */
   SD.begin(9600);
@@ -328,6 +328,7 @@ void loop() {
 
   /* Pitot Tube air Speed */
   air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
+  voltage = 0.0064264849 * analogRead(VoltagePin);
 
   gps_latitude = m8q.getLatitude() / 10000000;
   gps_longitude = m8q.getLongitude() / 10000000;
@@ -364,7 +365,7 @@ ChangeAscent:
   } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude) {
 ChangeSeparate:
     state++;
-	releaseServo.attach(releaseServoPin);
+	  releaseServo.attach(releaseServoPin);
     releaseServo.writeMicroseconds(1000);
     hs_deployed = 'P';
   } else if (state == 2 && velocity <= -.5) {
@@ -396,8 +397,6 @@ ChangeLanded:
     noteCounter = 0;
   }
 
-  camServo.writeMicroseconds(pid(event.orientation.x, event.orientation.y));
-
   if (timer(landedTimer, 1000, bcn)) {
     digitalWrite(LEDPin, landedOn ? LOW : HIGH);
     digitalWrite(BuzzerPin, landedOn ? LOW : HIGH);
@@ -423,7 +422,14 @@ ChangeLanded:
   if(timer(aeroReleaseTimer, 1000, state == 3)) {
     paraServo.detach();
   }
+  Serial.println("END");
+}
 
+void loop1(){
+  sensors_event_t event;
+  bno.getEvent(&event);
+  camServo.writeMicroseconds(pid(event.orientation.x - 180, event.orientation.z));
+  delay(10);
 }
 
 bool timer(unsigned long &t, unsigned long l, bool f) {
@@ -438,23 +444,25 @@ bool timer(unsigned long &t, unsigned long l, bool f) {
 }
 
 int pid(float a, float b) {
-  if (fabs(b) > 120) {
+  Serial.println(a);
+  Serial.println(b);
+  Serial.println();
+  if (fabs(b) < 120) {
     // Serial.println("UD");
-    if (a > 35) {
-      return 2000;
-    } else if (a < -35) {
-      return 1000;
+    if (a > 20) {
+      return 1800;
+    } else if (a < -20) {
+      return 1200;
     }
   } else {
-    if (fabs(a) > 45) {
+    if (fabs(a) < 145) {
       if (a > 0) {
-        return 1000;
+        return 1800;
       } else if (a < 0) {
-        return 2000;
+        return 1200;
       }
     }
   }
   return 1500;
 }
-
 
