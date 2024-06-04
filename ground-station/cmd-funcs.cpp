@@ -7,9 +7,13 @@ bool simMode = 0;
 
 void set_port(int &port){
 	char mode[]={'8','N','1',0};
-	while(RS232_OpenComport(port, 9600, mode, 0)){
-		printf("Can not open comport\n");
-		port++;
+	for(int i = port; i < 32; i++){
+		port = i;
+		if(RS232_OpenComport(port, 9600, mode, 0)){
+			printf("Can not open comport\n");
+		}else{
+			break;
+		}
 	}
 }
 

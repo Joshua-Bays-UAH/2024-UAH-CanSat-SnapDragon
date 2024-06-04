@@ -102,34 +102,34 @@ void setup() {
   /* Start OpenLogger */
   SD.begin(9600);
   for (int i = 0; i < 10 && !SD; i++) {
-    XBee.println("SD not connected!");
+    // XBee.println("SD not connected!");
     SD.begin(9600);
     delay(150);
   }
-  XBee.println("SD connected!");
+  // XBee.println("SD connected!");
 
   /* Start rotation sensor */
   for (int i = 0; i < 1 && !bno.begin(); i++) {
     //XBee.println("BNO not connected!");
     delay(150);
   }
-  XBee.println("BNO connected!");
+  // XBee.println("BNO connected!");
   bno.setExtCrystalUse(true);
 
   /* Start altitude/pressure sensor */
   for (int i = 0; i < 10 && !bmp.begin(); i++) {
-    XBee.println("BMP not connected!");
+    // XBee.println("BMP not connected!");
     delay(150);
   }
-  XBee.println("BMP connected.");
+  // XBee.println("BMP connected.");
   bmp.startForcedConversion();
 
   /* Start GPS */
   for (int i = 0; i < 10 && !m8q.begin(); i++) {
-    XBee.println("M8Q not connected!");
+    // XBee.println("M8Q not connected!");
     delay(150);
   }
-  XBee.println("M8Q connected.");
+  // XBee.println("M8Q connected.");
   m8q.setI2COutput(COM_TYPE_UBX); /*Set the I2C port to output UBX only (turn off NMEA noise) */
 
   // SD.write(26); SD.write(26); SD.write(26);
@@ -214,11 +214,11 @@ void loop() {
             offHour = 0;
             offMin = 0;
             offSec = 0;
-          } else if (strncmp(cmd + CmdPreLen + 3, "UTC,", 4) == 0) {
+          } else{
             /* Set to manual time */
-            sscanf(cmd + CmdPreLen + 7, "%i", &offHour);
-            sscanf(cmd + CmdPreLen + 10, "%i", &offMin);
-            sscanf(cmd + CmdPreLen + 13, "%i", &offSec);
+            sscanf(cmd + CmdPreLen + 3, "%i:", &offHour);
+            sscanf(cmd + CmdPreLen + 6, "%i:", &offMin);
+            sscanf(cmd + CmdPreLen + 9, "%i", &offSec);
             offHour = m8q.getHour() - offHour;
             offMin = m8q.getMinute() - offMin;
             offSec = m8q.getSecond() - offSec;
@@ -341,9 +341,9 @@ void loop() {
     gps_time[i] = '\0';
     mission_time[i] = '\0';
   }
-  sprintf(mission_time + strlen(mission_time), (gpsHour - offHour + 24) % 24 < 10 ? "0%i:" : "%i:", (gpsHour - offHour + 24) % 24);
-  sprintf(mission_time + strlen(mission_time), (gpsMin - offHour + 60) % 60 < 10 ? "0%i:" : "%i:", (gpsMin - offHour + 60) % 60);
-  sprintf(mission_time + strlen(mission_time), (gpsSec - offHour + 60) % 60 < 10 ? "0%i" : "%i", (gpsSec - offHour + 60) % 60);
+  sprintf(mission_time + strlen(mission_time), ((gpsHour - offHour + 24) % 24 < 10 ? "0%i:" : "%i:"), (gpsHour - offHour + 24) % 24);
+  sprintf(mission_time + strlen(mission_time), ((gpsMin - offMin + 60) % 60 < 10 ? "0%i:" : "%i:"), (gpsMin - offMin + 60) % 60);
+  sprintf(mission_time + strlen(mission_time), ((gpsSec - offSec + 60) % 60 < 10 ? "0%i" : "%i"), (gpsSec - offSec + 60) % 60);
 
   sprintf(gps_time + strlen(gps_time), gpsHour < 10 ? "0%i:" : "%i:", gpsHour);
   sprintf(gps_time + strlen(gps_time), gpsMin < 10 ? "0%i:" : "%i:", gpsMin);

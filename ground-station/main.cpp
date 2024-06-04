@@ -25,8 +25,9 @@ void update_graphs(Graph &altitudeGraph, Graph &airSpeedGraph, Graph &temperatur
 
 int main(int argc, char* argv[]){
 	srand(time(0));
-	//unsigned char buf[4096];
-	int port = 16; set_port(port);
+	int port = 16;
+	if(argc > 1){ port = std::stoi(argv[1]); }
+	set_port(port);
 	FILE* logFile = fopen(LogFileName, "a");
 	fprintf(logFile, LogFileHeader);
 	
@@ -44,11 +45,14 @@ int main(int argc, char* argv[]){
 	Button simDisableBtn(DefaultMargin+3*DefaultButtonWidth+3*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "SIM  Disable");
 	Button bcnOnBtn(DefaultMargin+4*DefaultButtonWidth+4*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Beacon On");
 	Button bcnOffBtn(DefaultMargin+5*DefaultButtonWidth+5*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Beacon Off");
-	Button cxOnBtn(DefaultMargin+6*DefaultButtonWidth+6*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry On");
-	Button cxOffBtn(DefaultMargin+7*DefaultButtonWidth+7*DefaultSpacing, WinHeight - DefaultMargin - DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry Off");
-	Button calBtn(DefaultMargin, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "CAL");
 	
-	std::deque<Button *> buttonDeque = {&simEnableBtn, &simActivateBtn, &simStartBtn, &simDisableBtn, &bcnOnBtn, &bcnOffBtn, &cxOnBtn, &cxOffBtn, &calBtn};
+	Button calBtn(DefaultMargin, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "CAL");
+	Button cxOnBtn(DefaultMargin+DefaultButtonWidth+DefaultSpacing, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry On");
+	Button cxOffBtn(DefaultMargin+2*DefaultButtonWidth+2*DefaultSpacing, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "Telemetry Off");
+	Button stUTCBtn(DefaultMargin+3*DefaultButtonWidth+3*DefaultSpacing, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "ST UTC");
+	Button stGPSBtn(DefaultMargin+4*DefaultButtonWidth+4*DefaultSpacing, WinHeight-2*DefaultMargin-2*DefaultButtonHeight, DefaultButtonWidth, DefaultButtonHeight, font, "ST GPS");
+	
+	std::deque<Button *> buttonDeque = {&simEnableBtn, &simActivateBtn, &simStartBtn, &simDisableBtn, &bcnOnBtn, &bcnOffBtn, &cxOnBtn, &cxOffBtn, &calBtn, &stUTCBtn, &stGPSBtn};
 	for(Button *i : buttonDeque){ i->set_colors(DefaultButtonBgColor, DefaultButtonTextColor); }
 	
 	Graph altitudeGraph(DefaultGraphPoints, DefaultMargin, DefaultMargin, DefaultGraphWidth, DefaultGraphHeight, font, "Altitude");
@@ -60,18 +64,20 @@ int main(int argc, char* argv[]){
 	Graph tiltXGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth*2+4.6*DefaultSpacing*2, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Tilt X");
 	Graph tiltYGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth*3+4.6*DefaultSpacing*3, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Tilt Y");
 	Graph rotZGraph(DefaultGraphPoints, DefaultMargin+DefaultGraphWidth*4+4.6*DefaultSpacing*4, DefaultMargin+DefaultSpacing*6+DefaultGraphHeight*2, DefaultGraphWidth, DefaultGraphHeight, font, "Rotation Z");
-	/* GPS Sats */
 	
 	std::deque<Graph *> graphDeque = {&altitudeGraph, &airSpeedGraph, &temperatureGraph, &pressureGraph, &voltageGraph, &gpsAltitudeGraph, &tiltXGraph, &tiltYGraph, &rotZGraph};
 
 	int packetLabelX = airSpeedGraph.position.x + airSpeedGraph.maxSize.x + 5.5*DefaultSpacing;
 	Label packetLabel(packetLabelX, 5, WinWidth - packetLabelX - 5, 15, font, std::string(LineWrapCount + 15, '*'));
 	Label packetCountLabel(WinWidth - ValueLabelWidth - DefaultMargin, WinHeight - ValueLabelHeight, ValueLabelWidth, ValueLabelHeight, font, "Packets: XXX");
-	Label gpsSatsLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*2 - DefaultSpacing - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "GPS Satellites: XX");
-	Label StateLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*3 - DefaultSpacing*2 - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "State: "+std::string(12, 'X'));
-	Label modeLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*4 - DefaultSpacing*3 - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "Mode: X");
+	Label StateLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*2 - DefaultSpacing - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "State: "+std::string(12, 'X'));
+	Label modeLabel(WinWidth - ValueLabelWidth - DefaultSpacing, WinHeight - ValueLabelHeight*3 - DefaultSpacing*2 - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "Mode: X");
 	
-	std::deque<Label *> labelDeque = {&packetLabel, &packetCountLabel, &gpsSatsLabel, &StateLabel, &modeLabel};
+	Label gpsSatsLabel(WinWidth - ValueLabelWidth*2 - DefaultSpacing*3, WinHeight - ValueLabelHeight, ValueLabelWidth, ValueLabelHeight, font, "GPS Satellites: XX");
+	Label gpsLattLabel(WinWidth - ValueLabelWidth*2 - DefaultSpacing*3, WinHeight - ValueLabelHeight*2 - DefaultSpacing - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "GPS Latt: XXX.XXXX");
+	Label gpsLongLabel(WinWidth - ValueLabelWidth*2 - DefaultSpacing*3, WinHeight - ValueLabelHeight*3 - DefaultSpacing*2 - DefaultMargin, ValueLabelWidth, ValueLabelHeight, font, "GPS Long: XXX.XXXX");
+	
+	std::deque<Label *> labelDeque = {&packetLabel, &packetCountLabel, &gpsSatsLabel, &StateLabel, &modeLabel, &gpsLattLabel, &gpsLongLabel};
 	
 	Packet packet;
 	std::thread	readThread(packet_handler, port, std::ref(packet));
@@ -113,6 +119,24 @@ int main(int argc, char* argv[]){
 						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}else if(mouse_clicked(mouse, calBtn, window)){
 						char buff[] = "CAL";
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
+					}else if(mouse_clicked(mouse, stUTCBtn, window)){
+						char buff[12] = "ST,";
+						long int n = time(0);
+						struct tm *tim = localtime(&n);
+						unsigned hms[3];
+						hms[0] = tim->tm_hour;
+						hms[1] = tim->tm_min;
+						hms[2] = tim->tm_sec;
+						if(hms[0] < 10){ sprintf(buff+strlen(buff), "0%u", hms[0]); }
+						else{ sprintf(buff+strlen(buff), "%u:", hms[0]); }
+						if(hms[1] < 10){ sprintf(buff + strlen(buff), "0%u", hms[1]); }
+						else{ sprintf(buff+strlen(buff), "%u", hms[1]); }
+						if(hms[2] < 10){ sprintf(buff + strlen(buff), ":0%u", hms[2]); }
+						else{ sprintf(buff+strlen(buff), ":%u", hms[2]); }
+						std::thread(send_cmd, buff, sizeof(buff), port).detach();
+					}else if(mouse_clicked(mouse, stGPSBtn, window)){
+						char buff[] = "ST,GPS";
 						std::thread(send_cmd, buff, sizeof(buff), port).detach();
 					}
 					break;
