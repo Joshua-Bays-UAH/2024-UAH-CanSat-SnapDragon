@@ -199,15 +199,6 @@ void loop() {
       if (strncmp(cmd, CmdPrefix, CmdPreLen) == 0) {
         if (strncmp(cmd + CmdPreLen, "CX,ON", 5) == 0) {
           cx = 1;
-        } else if (strncmp(cmd + CmdPreLen, "1", 1) == 0) {
-          releaseServo.writeMicroseconds(1000);
-          paraServo.writeMicroseconds(1000);
-        } else if (strncmp(cmd + CmdPreLen, "2", 1) == 0) {
-          releaseServo.writeMicroseconds(2000);
-          paraServo.writeMicroseconds(2000);
-        } else if (strncmp(cmd + CmdPreLen, "3", 1) == 0) {
-          releaseServo.writeMicroseconds(1500);
-          paraServo.writeMicroseconds(1500);
         } else if (strncmp(cmd + CmdPreLen, "CX,OFF", 6) == 0) {
           cx = 0;
         } else if (strncmp(cmd + CmdPreLen, "CAL", 3) == 0) {
@@ -244,13 +235,10 @@ void loop() {
           digitalWrite(LEDPin, 0);
           noteCounter = -1;
         } else if (strncmp(cmd + CmdPreLen, "STATE,SEPARATE", 14) == 0) {
-	  state = 1;
           goto ChangeSeparate;
         } else if (strncmp(cmd + CmdPreLen, "STATE,HS_RELEASE", 16) == 0) {
-	  state = 3;
           goto ChangeHRelease;
         } else if (strncmp(cmd + CmdPreLen, "STATE,LANDED", 12) == 0) {
-	  state = 4;
           goto ChangeLanded;
         } else if (strncmp(cmd + CmdPreLen, "SIM,ENABLE", 10) == 0) {
           simE = 1;
@@ -451,7 +439,6 @@ int pid(float a, float b) {
   Serial.println(b);
   Serial.println();
   if (fabs(b) < 120) {
-    // Serial.println("UD");
     if (a > 20) {
       return 1800;
     } else if (a < -20) {
