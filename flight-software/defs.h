@@ -22,4 +22,4 @@
 #define camServoPin 18
 #define LEDPin 17
 #define BuzzerPin 16
-
+#define PitotPin 27
