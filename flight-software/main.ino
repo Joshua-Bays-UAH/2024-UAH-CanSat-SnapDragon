@@ -94,7 +94,7 @@ void setup() {
   /* Change I2C ports */
   Wire.setSDA(8);
   Wire.setSCL(9);
-  // Wire.setClock(400000); // Increase I2C clock speed to 400kHz
+  Wire.setClock(100000); // Increase I2C clock speed to 400kHz
   Wire.begin();
 
   Serial.begin(9600);
@@ -178,19 +178,15 @@ void setup() {
 uint8_t sys, gyro, accel, mag = 0;
 void loop() {
   /* Command handling */
-  // Serial.println("1");
   if (XBee.available()) {
     int bytesRead = 0;
     bytesRead = XBee.readBytes(cmdBuff, sizeof(cmdBuff));
     if (bytesRead > 0) {
       cmdBuff[bytesRead] = 0;
     }
-    // Serial.println(cmdBuff);
-    // Serial.println(cmd);
     for (int i = 0; i < bytesRead; i++) {
       cmd[strlen(cmd)] = cmdBuff[i];
       if(cmdBuff[i] > 127 || cmdBuff[i] < 20){
-        // Serial.println("garbage detected");
           for (int i = 0; i < sizeof(cmd); i++) {
             cmd[i] = '\0';
           }
@@ -273,7 +269,6 @@ void loop() {
           paraServo.attach(paraServoPin);
           paraServo.write(180);
         }
-        // Serial.println(cmd);
         char buff[sizeof(cmd_echo)];
         for (int i = 0; i < sizeof(cmd_echo); i++) {
           cmd_echo[i] = '\0';
@@ -281,17 +276,12 @@ void loop() {
         }
       }
       strncpy(cmd_echo, cmd + CmdPreLen, CmdLength);
-      // Serial.println(cmd);
-      // Serial.println(cmd_echo);
       char buff[CmdLength] = "";
       for (int i = 0; i < strlen(cmd_echo); i++) {
         if (cmd_echo[i] == ',') { continue; }
         buff[strlen(buff)] = cmd_echo[i];
       }
       strncpy(cmd_echo, buff, sizeof(cmd_echo));
-      // Serial.println(cmd_echo);
-      // Serial.println("----");
-      // Serial.println(cmd_echo);
       for (int i = 0; i < sizeof(cmd); i++) {
         cmd[i] = '\0';
       }
@@ -319,22 +309,23 @@ void loop() {
   air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
   voltage = 0.0064264849 * analogRead(VoltagePin);
 
+  // XBee.println("GPS Start");
+
   if(m8q.getPVT()){
-    gps_latitude = m8q.getLatitude() / 10000000;
-    gps_longitude = m8q.getLongitude() / 10000000;
-    gps_altitude = m8q.getAltitude();
-    Serial.println("2.3");
-    gpsHour = m8q.getHour() - offHour;
-    gpsHour += 24;
-    gpsHour %= 24;
-    gpsMin = m8q.getMinute() - offMin;
-    gpsMin += 60;
-    gpsMin %= 60;
-    gpsSec = m8q.getSecond() - offSec;
-    gpsSec += 60;
-    gpsSec %= 60;
-    m8q.flushPVT();
+    gps_latitude = (float)m8q.getLatitude() / 10000000;
+    gps_longitude = (float)m8q.getLongitude() / 10000000;
+    gps_altitude = (float)m8q.getAltitude();
   }
+  // XBee.println("GPS TIME");
+  gpsHour = m8q.getHour() - offHour + 24;
+  gpsHour %= 24;
+  gpsMin = m8q.getMinute() - offMin + 60;
+  gpsMin %= 60;
+  gpsSec = m8q.getSecond() - offSec + 60;
+  gpsSec %= 60;
+  m8q.flushPVT();
+
+  // XBee.println("GPS End");
 
   /* Simulation mode pressure */
   if (mode != 0) {
@@ -425,7 +416,7 @@ ChangeLanded:
     XBee.println(packet);
     // Serial.println(packet);
     packetTimer = millis();
-    //SD.println(packet);
+    SD.println(packet);
   }
 
  if(timer(aeroReleaseTimer, 1000, state != 3)){
@@ -439,7 +430,6 @@ ChangeLanded:
      releaseServo.detach();
      lock = false;
   }
-  // Serial.println("END");
 // }
 
 // void setup1(){
@@ -466,11 +456,7 @@ bool timer(unsigned long &t, unsigned long l, bool f) {
 }
 
 int pid(float a, float b) {
-  // Serial.println(a);
-  // Serial.println(b);
-  // Serial.println();
   if (fabs(b) < 120) {
-    // Serial.println("UD");
     if (a > 20) {
       return 1800;
     } else if (a < -20) {
