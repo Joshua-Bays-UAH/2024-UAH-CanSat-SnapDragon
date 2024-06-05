@@ -71,10 +71,12 @@ bool lock = false;
 
 BMP388_DEV bmp;                                  /* BMP 388 sensor */
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
+Adafruit_BNO055 bno2 = Adafruit_BNO055(55, 0x28); /* BNO055 sensor*/
 SFE_UBLOX_GNSS m8q;                              /* GPS sensor*/
 Servo paraServo;
 Servo releaseServo;
 Servo camServo;
+sensors_event_t event;
 
 SoftwareSerial XBee(0, 1);  // RX, TX
 SoftwareSerial SD(5, 4);    /* OpenLog SD Card */
@@ -83,6 +85,7 @@ int melody[] = { 262, 196, 196, 220, 196, 0, 247, 262 };
 int noteDurations[] = {
   4, 8, 8, 4, 4, 4, 4, 4
 };
+sensors_event_t e;
 
 bool timer(unsigned long &t, unsigned long l, bool f = 1);
 int pid(float a, float b);
@@ -91,7 +94,9 @@ void setup() {
   /* Change I2C ports */
   Wire.setSDA(8);
   Wire.setSCL(9);
-  //Wire.begin();
+  // Wire.setClock(400000); // Increase I2C clock speed to 400kHz
+  Wire.begin();
+
   Serial.begin(9600);
   // while(!Serial){};
 
@@ -135,6 +140,7 @@ void setup() {
   }
   // XBee.println("M8Q connected.");
   m8q.setI2COutput(COM_TYPE_UBX); /*Set the I2C port to output UBX only (turn off NMEA noise) */
+  m8q.setNavigationFrequency(10);
 
   // SD.write(26); SD.write(26); SD.write(26);
   // SD.print("new 2079.txt"); SD.write(13);
@@ -172,18 +178,19 @@ void setup() {
 uint8_t sys, gyro, accel, mag = 0;
 void loop() {
   /* Command handling */
+  // Serial.println("1");
   if (XBee.available()) {
     int bytesRead = 0;
     bytesRead = XBee.readBytes(cmdBuff, sizeof(cmdBuff));
     if (bytesRead > 0) {
       cmdBuff[bytesRead] = 0;
     }
-    Serial.println(cmdBuff);
-    Serial.println(cmd);
+    // Serial.println(cmdBuff);
+    // Serial.println(cmd);
     for (int i = 0; i < bytesRead; i++) {
       cmd[strlen(cmd)] = cmdBuff[i];
       if(cmdBuff[i] > 127 || cmdBuff[i] < 20){
-        Serial.println("garbage detected");
+        // Serial.println("garbage detected");
           for (int i = 0; i < sizeof(cmd); i++) {
             cmd[i] = '\0';
           }
@@ -274,16 +281,16 @@ void loop() {
         }
       }
       strncpy(cmd_echo, cmd + CmdPreLen, CmdLength);
-      Serial.println(cmd);
-      Serial.println(cmd_echo);
+      // Serial.println(cmd);
+      // Serial.println(cmd_echo);
       char buff[CmdLength] = "";
       for (int i = 0; i < strlen(cmd_echo); i++) {
         if (cmd_echo[i] == ',') { continue; }
         buff[strlen(buff)] = cmd_echo[i];
       }
       strncpy(cmd_echo, buff, sizeof(cmd_echo));
-      Serial.println(cmd_echo);
-      Serial.println("----");
+      // Serial.println(cmd_echo);
+      // Serial.println("----");
       // Serial.println(cmd_echo);
       for (int i = 0; i < sizeof(cmd); i++) {
         cmd[i] = '\0';
@@ -294,10 +301,40 @@ void loop() {
       }
     }
   }
-
   /* Sample sensors */
   bmp.startForcedConversion();
   bmp.getMeasurements(temperature, pressure, altitude);
+  // bno.getEvent(&event);
+  event = e;
+  // sys = 0;
+  // gyro = 0;
+  // accel = 0;
+  // mag = 0;
+  // bno.getCalibration(&sys, &gyro, &accel, &mag);
+  tilt_x = event.orientation.x;
+  tilt_y = event.orientation.y;
+  rot_z = event.orientation.z;
+
+  /* Pitot Tube air Speed */
+  air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
+  voltage = 0.0064264849 * analogRead(VoltagePin);
+
+  if(m8q.getPVT()){
+    gps_latitude = m8q.getLatitude() / 10000000;
+    gps_longitude = m8q.getLongitude() / 10000000;
+    gps_altitude = m8q.getAltitude();
+    Serial.println("2.3");
+    gpsHour = m8q.getHour() - offHour;
+    gpsHour += 24;
+    gpsHour %= 24;
+    gpsMin = m8q.getMinute() - offMin;
+    gpsMin += 60;
+    gpsMin %= 60;
+    gpsSec = m8q.getSecond() - offSec;
+    gpsSec += 60;
+    gpsSec %= 60;
+    m8q.flushPVT();
+  }
 
   /* Simulation mode pressure */
   if (mode != 0) {
@@ -319,20 +356,6 @@ void loop() {
 	apogee = altitude - GroundAltitude;
   }
 
-
-  gpsHour = m8q.getHour();
-  -offHour;
-  gpsHour += 24;
-  gpsHour %= 24;
-  gpsMin = m8q.getMinute();
-  -offMin;
-  gpsMin += 60;
-  gpsMin %= 60;
-  gpsSec = m8q.getSecond();
-  -offSec;
-  gpsSec += 60;
-  gpsSec %= 60;
-
   for (int i = 0; i < 16; i++) {
     gps_time[i] = '\0';
     mission_time[i] = '\0';
@@ -348,7 +371,7 @@ void loop() {
   if (state == 0 && altitude - GroundAltitude >= AscentAlt) {
 ChangeAscent:
     state++;
-  } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude && altiude - GroundAltitude <= apogee - 5){
+  } else if (state == 1 && altitude - GroundAltitude >= SeparateAltitude && altitude - GroundAltitude <= apogee - 5){
 ChangeSeparate:
     state++;
 	aeroReleaseTimer = millis();
@@ -398,7 +421,7 @@ ChangeLanded:
     pa = altitude;
     packet_count++;
     //sprintf(packet, "%u,%u,%s,%s,%f,%f,%f,%s,%f,%f,%f,%f,%f,%f,%s,,%f", TEAM_ID, packet_count, Modes[mode], States[state], altitude-GroundAltitude, temperature,pressure, gps_time, gps_altitude, gps_latitude, gps_longitude, tilt_x, tilt_y, rot_z, cmd_echo, simPressure / 100);
-    sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%.1f,%.4f,%.4f,%u,%.2f,%.2sf,%.2f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed - avgAirSpeed, hs_deployed, pc_deployed, temperature, voltage, pressure / 10, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
+    sprintf(packet, "%u,%s,%u,%s,%s,%.1f,%f,%c,%c,%.1f,%.1f,%.1f,%s,%.1f,%.4f,%.4f,%u,%.2f,%.2f,%.2f,%s,,%f", TEAM_ID, mission_time, packet_count, Modes[mode], States[state], altitude - GroundAltitude, air_speed - avgAirSpeed, hs_deployed, pc_deployed, temperature, voltage, pressure / 10, gps_time, gps_altitude, gps_latitude, gps_longitude, gps_sats, tilt_x, tilt_y, rot_z, cmd_echo, velocity);
     XBee.println(packet);
     // Serial.println(packet);
     packetTimer = millis();
@@ -416,30 +439,19 @@ ChangeLanded:
      releaseServo.detach();
      lock = false;
   }
-  Serial.println("END");
-}
+  // Serial.println("END");
+// }
 
-void loop1(){
-  sensors_event_t event;
-  bno.getEvent(&event);
-  camServo.writeMicroseconds(pid(event.orientation.x - 180, event.orientation.z));
-  sys = 0;
-  gyro = 0;
-  accel = 0;
-  mag = 0;
-  bno.getCalibration(&sys, &gyro, &accel, &mag);
-  tilt_x = event.orientation.x;
-  tilt_y = event.orientation.y;
-  rot_z = event.orientation.z;
+// void setup1(){
+  // Wire.setSDA(8);
+  // Wire.setSCL(9);
+  // Ubno2.begin();
+// }
 
-  /* Pitot Tube air Speed */
-  air_speed = sqrt((2*abs( (1000*( ((analogRead(PitotPin) * (3.25 / 1023.0)) * 1.45454545455) / 5 -0.5)/0.2)  ))/1.225); //1.225 is ISA density(kg/m^3)
-  voltage = 0.0064264849 * analogRead(VoltagePin);
-
-  gps_latitude = m8q.getLatitude() / 10000000;
-  gps_longitude = m8q.getLongitude() / 10000000;
-  gps_altitude = m8q.getAltitude();
-  delay(10);
+// void loop1(){
+  bno.getEvent(&e);
+  camServo.writeMicroseconds(pid(e.orientation.x - 180, e.orientation.z));
+  // delay(5);
 }
 
 bool timer(unsigned long &t, unsigned long l, bool f) {
@@ -454,9 +466,9 @@ bool timer(unsigned long &t, unsigned long l, bool f) {
 }
 
 int pid(float a, float b) {
-  Serial.println(a);
-  Serial.println(b);
-  Serial.println();
+  // Serial.println(a);
+  // Serial.println(b);
+  // Serial.println();
   if (fabs(b) < 120) {
     // Serial.println("UD");
     if (a > 20) {
