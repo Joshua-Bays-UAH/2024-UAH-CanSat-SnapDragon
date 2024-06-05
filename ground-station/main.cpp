@@ -147,6 +147,8 @@ int main(int argc, char* argv[]){
 			packetLabel.set_text(packet.packetString);
 			packetCountLabel.set_text(std::string("Packets: ")+std::to_string(packet.total));
 			gpsSatsLabel.set_text(std::string("GPS Satellites: ")+std::to_string(packet.gpsSats));
+			gpsLattLabel.set_text(std::string("GPS Long: ")+std::to_string(packet.gpsLat));
+			gpsLongLabel.set_text(std::string("GPS Latt: ")+std::to_string(packet.gpsLong));
 			StateLabel.set_text(std::string("State: ")+packet.state);
 			modeLabel.set_text(std::string("Mode: ")+packet.mode);
 			update_graphs(altitudeGraph, airSpeedGraph, temperatureGraph, pressureGraph, voltageGraph, gpsAltitudeGraph, tiltXGraph, tiltYGraph, rotZGraph, packet);
